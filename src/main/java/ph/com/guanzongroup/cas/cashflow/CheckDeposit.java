@@ -111,7 +111,7 @@ public class CheckDeposit extends Transaction {
     public Journal poJournal;
     
     public JSONObject InitTransaction() throws SQLException, GuanzonException {
-        SOURCE_CODE = "Dlvr";
+        SOURCE_CODE = "Ckdp";
 
         poMaster = new CashflowModels(poGRider).CheckDepositMaster();
         poDetail = new CashflowModels(poGRider).CheckDepositDetail();
