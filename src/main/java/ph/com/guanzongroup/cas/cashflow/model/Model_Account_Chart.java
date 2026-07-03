@@ -1,10 +1,12 @@
 package ph.com.guanzongroup.cas.cashflow.model;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
+import org.guanzon.appdriver.base.SQLUtil;
 import org.guanzon.appdriver.constant.EditMode;
 import org.guanzon.cas.parameter.model.Model_Industry;
 import org.guanzon.cas.parameter.services.ParamModels;
@@ -53,7 +55,11 @@ public class Model_Account_Chart extends Model {
 
     /** Parent Account model reference */
     Model_Account_ChartX poAccountParent;
-
+    protected Object oldID;
+    protected Object oldID2;
+    protected Object oldID3;
+    protected Object oldID4;
+    protected Object oldID5;
     /**
      * Initializes the model.
      * 
@@ -84,7 +90,11 @@ public class Model_Account_Chart extends Model {
             ID = "sAcctCode";
             ID2 = "sParentCd";
             ID3 = "sIndstCde";
-
+            oldID = null;
+            oldID2 = null;
+            oldID3 = null;
+            oldID4 = null;
+            oldID5 = null;
             CashflowModels model = new CashflowModels(poGRider);
             poGL = model.Transaction_Account_Chart();
             poAccountParent = model.Account_ChartX();
@@ -457,5 +467,233 @@ public class Model_Account_Chart extends Model {
             poIndustry.initialize();
             return poIndustry;
         }
+    }
+    @Override
+    public JSONObject saveRecord() throws SQLException, GuanzonException {
+        this.poJSON = new JSONObject();
+        if (this.pnEditMode != 0 && this.pnEditMode != 2) {
+            this.poJSON = new JSONObject();
+            this.poJSON.put("result", "error");
+            this.poJSON.put("message", "Invalid update mode. Unable to save record.");
+            return this.poJSON;
+        } else {
+            if (this.pnEditMode == 0) {
+                if (!this.getNextCode().isEmpty()) {
+                    this.setValue(this.ID, this.getNextCode());
+                }
+
+                String lsSQL = MiscUtil.makeSQL(this);
+                if (!lsSQL.isEmpty()) {
+                    if (this.poGRider.executeQuery(lsSQL, this.getTable(), this.poGRider.getBranchCode(), "", "") > 0L) {
+                        this.poJSON = new JSONObject();
+                        this.poJSON.put("result", "success");
+                        this.poJSON.put("message", "Record saved successfully.");
+                    } else {
+                        this.poJSON = new JSONObject();
+                        this.poJSON.put("result", "error");
+                        this.poJSON.put("message", this.poGRider.getMessage());
+                    }
+                } else {
+                    this.poJSON = new JSONObject();
+                    this.poJSON.put("result", "error");
+                    this.poJSON.put("message", "No record to save.");
+                }
+            } else {
+                Model_Account_Chart loOldEntity = new Model_Account_Chart();
+                loOldEntity.setApplicationDriver(this.poGRider);
+                loOldEntity.setXML(this.XML);
+                loOldEntity.setTableName(this.TABLE);
+                loOldEntity.initialize();
+                if (!this.ID5.isEmpty()) {
+
+                    loOldEntity.ID5 = this.ID5;
+                    loOldEntity.ID4 = this.ID4;
+                    loOldEntity.ID3 = this.ID3;
+                    loOldEntity.ID2 = this.ID2;
+                    loOldEntity.ID  = this.ID;
+
+                    this.poJSON = loOldEntity.openRecord(
+                            (String) oldID,
+                            oldID2,
+                            oldID3,
+                            oldID4,
+                            oldID5);
+
+                } else if (!this.ID4.isEmpty()) {
+
+                    loOldEntity.ID4 = this.ID4;
+                    loOldEntity.ID3 = this.ID3;
+                    loOldEntity.ID2 = this.ID2;
+                    loOldEntity.ID  = this.ID;
+
+                    this.poJSON = loOldEntity.openRecord(
+                            (String) oldID,
+                            oldID2,
+                            oldID3,
+                            oldID4);
+
+                } else if (!this.ID3.isEmpty()) {
+
+                    loOldEntity.ID3 = this.ID3;
+                    loOldEntity.ID2 = this.ID2;
+                    loOldEntity.ID  = this.ID;
+
+                    this.poJSON = loOldEntity.openRecord(
+                            (String) oldID,
+                            oldID2,
+                            oldID3);
+
+                } else if (!this.ID2.isEmpty()) {
+
+                    loOldEntity.ID2 = this.ID2;
+                    loOldEntity.ID  = this.ID;
+
+                    this.poJSON = loOldEntity.openRecord(
+                            (String) oldID,
+                            oldID2);
+
+                } else {
+
+                    loOldEntity.ID = this.ID;
+
+                    this.poJSON = loOldEntity.openRecord(
+                            (String) oldID);
+                }
+
+                if ("success".equals((String)this.poJSON.get("result"))) {
+                    String lsSQL;
+                    if (this.ID2.isEmpty()) {
+
+                        lsSQL = MiscUtil.makeSQL(
+                                this,
+                                loOldEntity,
+                                this.ID + " = " + SQLUtil.toSQL(oldID));
+
+                    } else if (this.ID3.isEmpty()) {
+
+                        lsSQL = MiscUtil.makeSQL(
+                                this,
+                                loOldEntity,
+                                this.ID + " = " + SQLUtil.toSQL(oldID)
+                                        + " AND "
+                                        + this.ID2 + " = " + SQLUtil.toSQL(oldID2));
+
+                    } else if (this.ID4.isEmpty()) {
+
+                        lsSQL = MiscUtil.makeSQL(
+                                this,
+                                loOldEntity,
+                                this.ID + " = " + SQLUtil.toSQL(oldID)
+                                        + " AND "
+                                        + this.ID2 + " = " + SQLUtil.toSQL(oldID2)
+                                        + " AND "
+                                        + this.ID3 + " = " + SQLUtil.toSQL(oldID3));
+
+                    } else if (this.ID5.isEmpty()) {
+
+                        lsSQL = MiscUtil.makeSQL(
+                                this,
+                                loOldEntity,
+                                this.ID + " = " + SQLUtil.toSQL(oldID)
+                                        + " AND "
+                                        + this.ID2 + " = " + SQLUtil.toSQL(oldID2)
+                                        + " AND "
+                                        + this.ID3 + " = " + SQLUtil.toSQL(oldID3)
+                                        + " AND "
+                                        + this.ID4 + " = " + SQLUtil.toSQL(oldID4));
+
+                    } else {
+
+                        lsSQL = MiscUtil.makeSQL(
+                                this,
+                                loOldEntity,
+                                this.ID + " = " + SQLUtil.toSQL(oldID)
+                                        + " AND "
+                                        + this.ID2 + " = " + SQLUtil.toSQL(oldID2)
+                                        + " AND "
+                                        + this.ID3 + " = " + SQLUtil.toSQL(oldID3)
+                                        + " AND "
+                                        + this.ID4 + " = " + SQLUtil.toSQL(oldID4)
+                                        + " AND "
+                                        + this.ID5 + " = " + SQLUtil.toSQL(oldID5));
+                    }
+
+                    if (!lsSQL.isEmpty()) {
+                        if (this.poGRider.executeQuery(lsSQL, this.getTable(), this.poGRider.getBranchCode(), "", "") > 0L) {
+                            this.poJSON = new JSONObject();
+                            this.poJSON.put("result", "success");
+                            this.poJSON.put("message", "Record saved successfully.");
+                        } else {
+                            this.poJSON = new JSONObject();
+                            this.poJSON.put("result", "error");
+                            this.poJSON.put("message", this.poGRider.getMessage());
+                        }
+                    } else {
+                        this.poJSON = new JSONObject();
+                        this.poJSON.put("result", "success");
+                        this.poJSON.put("message", "No updates has been made.");
+                    }
+                } else {
+                    this.poJSON = new JSONObject();
+                    this.poJSON.put("result", "error");
+                    this.poJSON.put("message", "Record discrepancy. Unable to save record.");
+                }
+            }
+
+            return this.poJSON;
+        }
+    }
+
+    protected void storeOriginalKeys() {
+        oldID = getValue(ID);
+
+        if (!ID2.isEmpty()) {
+            oldID2 = getValue(ID2);
+        }
+
+        if (!ID3.isEmpty()) {
+            oldID3 = getValue(ID3);
+        }
+
+        if (!ID4.isEmpty()) {
+            oldID4 = getValue(ID4);
+        }
+
+        if (!ID5.isEmpty()) {
+            oldID5 = getValue(ID5);
+        }
+    }
+    @Override
+    public JSONObject openRecord(String id) throws SQLException, GuanzonException {
+        this.poJSON = new JSONObject();
+        String lsSQL = MiscUtil.makeSelect(this);
+        lsSQL = MiscUtil.addCondition(lsSQL, this.ID + " = " + SQLUtil.toSQL(id));
+        ResultSet loRS = this.poGRider.executeQuery(lsSQL);
+
+        try {
+            if (loRS.next()) {
+                for(int lnCtr = 1; lnCtr <= loRS.getMetaData().getColumnCount(); ++lnCtr) {
+                    this.setValue(lnCtr, loRS.getObject(lnCtr));
+                }
+
+                MiscUtil.close(loRS);
+                this.storeOriginalKeys();
+                this.pnEditMode = 1;
+                this.poJSON = new JSONObject();
+                this.poJSON.put("result", "success");
+                this.poJSON.put("message", "Record loaded successfully.");
+            } else {
+                this.poJSON = new JSONObject();
+                this.poJSON.put("result", "error");
+                this.poJSON.put("message", "No record to load.");
+            }
+        } catch (SQLException e) {
+            this.logError(this.getCurrentMethodName() + "»" + e.getMessage());
+            this.poJSON = new JSONObject();
+            this.poJSON.put("result", "error");
+            this.poJSON.put("message", e.getMessage());
+        }
+
+        return this.poJSON;
     }
 }
