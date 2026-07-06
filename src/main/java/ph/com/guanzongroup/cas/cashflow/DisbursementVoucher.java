@@ -3554,15 +3554,6 @@ public class DisbursementVoucher extends Transaction {
     }
     
     /**
-    * Gets the list of transaction attachments.
-    *
-    * @return list of TransactionAttachment objects
-    */
-    private List<TransactionAttachment> TransactionAttachmentList() {
-        return paAttachments;
-    }
-    
-    /**
     * Gets a transaction attachment by row index.
     *
     * @param row index of the attachment
@@ -4136,6 +4127,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     proposal.ReloadDetail();
 }
     
+    /**
+     * Rebuilds withholding-tax rows by removing blank entries and keeping one editable tail row.
+     *
+     * @throws CloneNotSupportedException If model cloning fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If withholding-tax model operations fail.
+     */
     public void ReloadWTDeductions() throws CloneNotSupportedException, SQLException, GuanzonException{
         int lnCtr = getWTaxDeductionsCount() - 1;
         Date fromdate = null, todate = null;
@@ -4271,13 +4269,9 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     }
     
     /**
-    * Reloads withholding tax deductions by removing invalid entries,
-    * ensuring at least one valid record exists, and preserving period
-    * dates when a row is removed.
+    * Validates required check-payment fields when the transaction is configured for bank printing.
     *
-    * @throws CloneNotSupportedException if cloning fails
-    * @throws SQLException if a database error occurs
-    * @throws GuanzonException if a business rule violation occurs
+    * @return JSON result containing validation status and message.
     */
     private JSONObject validateCheckPayment(){
         poJSON = new JSONObject();
@@ -4358,6 +4352,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
     
+    /**
+     * Validates that journal or journal-proposal entries exist and are in a valid mode for the target status.
+     *
+     * @param fsStatus Transaction status that requires journal verification.
+     * @param fbIsWillSave {@code true} when called during save pre-validation.
+     * @return JSON result containing validation status.
+     */
     private JSONObject verifyJournals(String fsStatus, boolean fbIsWillSave){
         boolean lbCheckJEP = false;
         switch(fsStatus){
@@ -4806,6 +4807,11 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     }
     
     public List<JournalProposal> paOrigJEP;
+    /**
+     * Syncs current journal-proposal rows against the original snapshot to preserve delete/void actions.
+     *
+     * @return JSON result containing sync status.
+     */
     private JSONObject populateOriginalValue(){
         poJSON = new JSONObject();
         paOrigJEP = new ArrayList<JournalProposal>();
@@ -5173,6 +5179,15 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
     
+    /**
+     * Saves active journal proposals and voids/cancels proposals that were removed in the current edit.
+     *
+     * @return JSON result containing save status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If journal-proposal operations fail.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     * @throws ParseException If date parsing fails while processing linked transactions.
+     */
     private JSONObject saveJournalProposal() throws SQLException, GuanzonException, CloneNotSupportedException, ParseException, ParseException{
         poJSON = new JSONObject();
             if(paOrigJEP != null){
@@ -6629,6 +6644,14 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
     
+    /**
+     * Generates journal details from TBJ rules grouped by source category and appends computed entries.
+     *
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If journal model operations fail.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     * @throws ScriptException If TBJ script execution fails.
+     */
     public void loadTBJ() throws SQLException, GuanzonException, CloneNotSupportedException, ScriptException{
         System.out.println("loadTBJ JOURNAL EDIT MODE :  " + poJournal.getEditMode());
         String lsJournal = existJournal();
@@ -6803,9 +6826,12 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     }
     
     /**
-     * Check existing Journal Proposal
-     * @return
-     * @throws SQLException 
+     * Loads journal proposals linked to the current transaction and prepares them for editing when needed.
+     *
+     * @return JSON result containing load status.
+     * @throws SQLException If a database access error occurs.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     * @throws GuanzonException If journal-proposal model operations fail.
      */
     public JSONObject loadJournalProposal() throws SQLException, CloneNotSupportedException, GuanzonException{
         poJSON = new JSONObject();
@@ -6997,6 +7023,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return "";
     }
     
+    /**
+     * Loads the selected bank account and assigns the next available check number for the current payment.
+     *
+     * @return JSON result containing populate status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If bank-account model operations fail.
+     */
     public JSONObject populateCheckNo() throws SQLException, GuanzonException{
         poJSON = new JSONObject();
         if(getEditMode() == EditMode.UNKNOWN || Master().getEditMode() == EditMode.UNKNOWN){
@@ -7242,12 +7275,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     }
     
     /**
-     * Populate Check
-     * @return
-     * @throws SQLException
-     * @throws GuanzonException
-     * @throws CloneNotSupportedException
-     * @throws ScriptException 
+     * Loads withholding-tax deduction rows for the current transaction and prepares them for edit mode.
+     *
+     * @return JSON result containing populate status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If withholding-tax model operations fail.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     * @throws ScriptException If script execution fails.
      */
     public JSONObject populateWithholdingTaxDeduction() throws SQLException, GuanzonException, CloneNotSupportedException, ScriptException{
         poJSON = new JSONObject();
@@ -7463,6 +7497,11 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     }
     
     //QUERY LIST
+    /**
+     * Builds the SQL query for cache-payable transactions eligible for DV linking.
+     *
+     * @return SQL text for cache payables.
+     */
     private String getCachePayables(){
         String lsIndustry = "";
         if(Master().getIndustryID() != null && !"".equals(Master().getIndustryID())){
@@ -7518,6 +7557,11 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 return lsSQL + " GROUP BY a.sTransNox ";
     }
     
+    /**
+     * Builds the SQL query for payment-request transactions eligible for DV linking.
+     *
+     * @return SQL text for payment requests.
+     */
     private String getPaymentRequest(){
         String lsIndustry = "";
         if(Master().getIndustryID() != null && !"".equals(Master().getIndustryID())){
@@ -7573,6 +7617,11 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return lsSQL;
     }
     
+    /**
+     * Builds the SQL query for SOA/AP transactions eligible for DV linking.
+     *
+     * @return SQL text for SOA payables.
+     */
     private String getSOA(){
         String lsIndustry = "";
         if(Master().getIndustryID() != null && !"".equals(Master().getIndustryID())){
@@ -7831,9 +7880,10 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     }
     
     /**
-     * get Inventory Type Code value
-     * @param
-     * @return 
+     * Resolves document code based on bank account and branch mapping.
+     *
+     * @param fsBankAccountId Bank account identifier.
+     * @return Document code for check printing, or empty when not found.
      */
     private String getDocumentCode(String fsBankAccountId){
         try {
@@ -7872,6 +7922,16 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return  "";
     }
     
+    /**
+     * Sends a single voucher node to the default printer using configured document mapping.
+     *
+     * @param tx Voucher transaction payload.
+     * @param poDocumentMapping Field mapping used to render voucher text positions.
+     * @return JSON result containing print status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If voucher data resolution fails.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     */
     private JSONObject PrintCheck(Transaction tx, DocumentMapping poDocumentMapping) throws SQLException, GuanzonException, CloneNotSupportedException {
         poJSON = new JSONObject();
         Printer printer = Printer.getDefaultPrinter();
@@ -7921,6 +7981,16 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
 
+    /**
+     * Displays a modal print preview and returns whether the user confirmed printing.
+     *
+     * @param tx Voucher transaction payload.
+     * @param poDocumentMapping Field mapping used to render the preview node.
+     * @return {@code true} when the user confirms print, otherwise {@code false}.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If voucher data resolution fails.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     */
     private boolean showPrintPreview(Transaction tx, DocumentMapping poDocumentMapping) throws SQLException, GuanzonException, CloneNotSupportedException {
         Printer printer = Printer.getDefaultPrinter();
         PageLayout layout = printer.createPageLayout(Paper.NA_LETTER,
@@ -8165,6 +8235,14 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         }
     }
     
+    /**
+     * Resolves the latest user and timestamp who moved the transaction to the given status.
+     *
+     * @param fsStatus Status code to trace.
+     * @return JSON result containing updater name and datetime.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If user lookup operations fail.
+     */
     public JSONObject getUpdateStatusBy(String fsStatus) throws SQLException, GuanzonException {
         String lsUpdateBy = "";
         String lsDate = "";
@@ -8204,6 +8282,15 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
 
+    /**
+     * Prints disbursement vouchers for the provided transactions and marks first-time prints.
+     *
+     * @param fsTransactionNos Transaction numbers to print.
+     * @return JSON result containing print status.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If transaction loading or validation fails.
+     */
     public JSONObject printTransaction(List<String> fsTransactionNos)
             throws CloneNotSupportedException, SQLException, GuanzonException {
         poJSON = new JSONObject();
@@ -8695,6 +8782,15 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         }
     }
     
+    /**
+     * Prints payment-summary vouchers for already printed disbursement vouchers.
+     *
+     * @param fsTransactionNos Transaction numbers to include.
+     * @return JSON result containing print status.
+     * @throws CloneNotSupportedException If cloning operations fail.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If transaction loading or validation fails.
+     */
     public JSONObject printTransactionPaymentSummary(List<String> fsTransactionNos)
             throws CloneNotSupportedException, SQLException, GuanzonException {
         poJSON = new JSONObject();
@@ -8986,10 +9082,19 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return ("success".equals((String) foJSON.get("result")) || !"error".equals((String) foJSON.get("result")));
     }
     
+    /**
+     * Expands a payment-request record into payment-summary detail rows.
+     *
+     * @param foObject Payment request master record.
+     * @param Details Target detail accumulator.
+     * @return JSON result containing load status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     private JSONObject getPRFDetail(Model_Payment_Request_Master foObject,  List<TransactionPaymentSummaryDetail> Details ) throws SQLException, GuanzonException{
         poJSON = new JSONObject();
-//        double ldblMasterDiscount = foObject.getDiscountAmount();
         double lnAmount = 0.0000;
+        String lsParticular = "";
         
         for(int lnCtr = 0; lnCtr < foObject.getEntryNo();lnCtr++){
             Model_Payment_Request_Detail loObject = new CashflowModels(poGRider).PaymentRequestDetail();
@@ -9000,22 +9105,17 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
             if(!loObject.isReverse()){
                 continue;
             }
+            lsParticular = loObject.Particular().getDescription();
+            if(lsParticular == null || "".equals(lsParticular)){
+                lsParticular = foObject.getRemarks() ;
+            }
             
             lnAmount = loObject.getAmount();
-//            if(ldblMasterDiscount > 0.0000){
-//                if(ldblMasterDiscount > lnAmount){
-//                    ldblMasterDiscount = ldblMasterDiscount - lnAmount;
-//                    lnAmount = 0.0000;
-//                } else {
-//                    lnAmount = lnAmount - ldblMasterDiscount;
-//                    ldblMasterDiscount = 0.0000;
-//                }
-//            }
             boolean lbExist = false;
             for(int lnRow = 0;lnRow < Details.size();lnRow++){
                 if(Details.get(lnRow).getsSourceCode().equals(DisbursementStatic.SourceCode.PAYMENT_REQUEST)){
                     if(Details.get(lnRow).getsSourceNo().equals(foObject.getTransactionNo())
-                       && Details.get(lnRow).getsParticular().equals(loObject.Particular().getDescription())){
+                       && Details.get(lnRow).getsParticular().equals(lsParticular)){
                         Details.get(lnRow).setnTotalAmount(Double.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(lnAmount, false).replace(",", "")));
                         lbExist = true;
                     }
@@ -9025,7 +9125,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
             if(!lbExist){
                 Details.add(new TransactionPaymentSummaryDetail(
                         Details.size()+1,
-                        loObject.Particular().getDescription(),
+                        lsParticular,
                         foObject.Department().getDescription(),
                         foObject.getSeriesNo(),
                         foObject.getTransactionNo(),
@@ -9038,6 +9138,15 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
     
+    /**
+     * Expands a PO receiving record into payment-summary detail rows, including freight when applicable.
+     *
+     * @param foObject PO receiving master record.
+     * @param Details Target detail accumulator.
+     * @return JSON result containing load status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     private JSONObject getPOReceivingDetail(Model_POR_Master foObject,  List<TransactionPaymentSummaryDetail> Details ) throws SQLException, GuanzonException{
         poJSON = new JSONObject();
         double lnAmount = 0.0000;
@@ -9100,6 +9209,15 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
     
+    /**
+     * Expands a PO return record into payment-summary detail rows and applies return-side discount effects.
+     *
+     * @param foObject PO return master record.
+     * @param Details Target detail accumulator.
+     * @return JSON result containing load status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     private JSONObject getPOReturnDetail(Model_POReturn_Master foObject,  List<TransactionPaymentSummaryDetail> Details ) throws SQLException, GuanzonException{
         poJSON = new JSONObject();
         double lnAmount = 0.0000;
@@ -9186,6 +9304,15 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
     
+    /**
+     * Appends AP-adjustment amounts into payment-summary detail rows.
+     *
+     * @param foObject AP adjustment record.
+     * @param Details Target detail accumulator.
+     * @return JSON result containing append status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     private JSONObject getAPAdjustment(Model_AP_Payment_Adjustment foObject,  List<TransactionPaymentSummaryDetail> Details ) throws SQLException, GuanzonException{
         poJSON = new JSONObject();
         double lnAmount = 0.0000;
@@ -9208,6 +9335,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         return poJSON;
     }
     
+    /**
+     * Loads status history, maps status codes to captions, and displays the status-history dialog.
+     *
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws Exception If UI rendering fails.
+     */
     public void ShowStatusHistory() throws SQLException, GuanzonException, Exception{
         CachedRowSet crs = getStatusHistory();
         
@@ -9306,6 +9440,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         showStatusHistoryUI("Disbursement Voucher", (String) poMaster.getValue("sTransNox"), entryBy, entryDate, crs);
     }
     
+    /**
+     * Resolves encoder name and entry timestamp from audit logs for the current transaction.
+     *
+     * @return JSON result containing entry metadata.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If user lookup operations fail.
+     */
     public JSONObject getEntryBy() throws SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsEntry = "";
@@ -10005,6 +10146,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
     }
 
 
+    /**
+     * Generates and previews/exports disbursement reports using summarized or detailed templates.
+     *
+     * @param isSummarized {@code true} for summary report, {@code false} for detailed report.
+     * @param reportData Source rows used to build report beans.
+     * @return JSON result containing report generation status.
+     */
     public JSONObject printReports(Boolean isSummarized, JSONArray reportData) {
         poJSON = new JSONObject();
 
