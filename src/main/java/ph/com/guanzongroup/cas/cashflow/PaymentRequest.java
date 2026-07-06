@@ -39,10 +39,8 @@ import org.guanzon.appdriver.constant.UserRight;
 import org.guanzon.appdriver.iface.GValidator;
 import org.guanzon.appdriver.token.RequestAccess;
 import org.guanzon.cas.inv.InvTransCons;
-import org.guanzon.cas.parameter.Branch;
 import org.guanzon.cas.parameter.Department;
 import org.guanzon.cas.parameter.services.ParamControllers;
-import org.guanzon.cas.purchasing.controller.PurchaseOrderReceiving;
 import org.guanzon.cas.purchasing.model.Model_PO_Master;
 import org.guanzon.cas.purchasing.services.PurchaseOrderModels;
 import org.guanzon.cas.purchasing.status.PurchaseOrderStatus;
@@ -1128,7 +1126,8 @@ public class PaymentRequest extends Transaction {
     public void ReloadDetail() throws CloneNotSupportedException{
         int lnCtr = getDetailCount() - 1;
         while (lnCtr >= 0) {
-            if (Detail(lnCtr).getParticularID() == null || "".equals(Detail(lnCtr).getParticularID())){
+            if (Detail(lnCtr).getParticularID() == null || "".equals(Detail(lnCtr).getParticularID())
+                && (Detail(lnCtr).getAmount() == 0.0000)){
                 if(Detail(lnCtr).getEditMode() == EditMode.ADDNEW){
                     deleteDetail(lnCtr); 
                 }
@@ -1847,6 +1846,7 @@ public class PaymentRequest extends Transaction {
         Master().setBranchCode(loObject.getDestinationID()); //getBranchCode //Change by Arsiela 06-19-2026
         Master().setPayeeID(loPayee.getPayeeID());
         Master().setSourceNo(loObject.getTransactionNo());
+        Master().setRemarks(loObject.getRemarks());
         Master().setSourceCode(InvTransCons.PURCHASE_ORDER);
         poJSON.put("result", "success");
         poJSON.put("message", "success");
