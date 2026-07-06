@@ -310,13 +310,13 @@ public class AccountChart extends Parameter {
      */
     public JSONObject searchRecordParent(String value, boolean byCode) throws SQLException, GuanzonException {
         String lsSQL = getSQ_Browse();
-        List<String> lsFilter = new ArrayList<>();
-    
-        lsFilter.add("  a.cRecdStat = '1'");
-        if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
-            lsSQL += " WHERE " + String.join(" AND ", lsFilter);
-        }
-        System.out.println("SearchParent : " + lsSQL ) ;
+//        List<String> lsFilter = new ArrayList<>();
+//
+//        lsFilter.add("  a.cRecdStat = '1'");
+//        if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
+//            lsSQL += " WHERE " + String.join(" AND ", lsFilter);
+//        }
+//        System.out.println("SearchParent : " + lsSQL ) ;
 
         poJSON = ShowDialogFX.Search(poGRider,
                 lsSQL,
@@ -357,18 +357,18 @@ public class AccountChart extends Parameter {
      */
     public JSONObject searchRecordByIndustry(String value, boolean byCode) throws SQLException, GuanzonException {
         String lsSQL = getSQ_Browse();
-        List<String> lsFilter = new ArrayList<>();
-    
-        lsFilter.add("  a.cRecdStat = '1'");
-        
-        if (poGRider.getIndustry() != null) {
-            lsFilter.add(" a.sIndstCde  = " + SQLUtil.toSQL(poGRider.getIndustry()));
-        }
-        
-        if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
-            lsSQL += " WHERE " + String.join(" AND ", lsFilter);
-        }
-        System.out.println("SearchParent : " + lsSQL ) ;
+//        List<String> lsFilter = new ArrayList<>();
+//
+//        lsFilter.add("  a.cRecdStat = '1'");
+//
+//        if (poGRider.getIndustry() != null) {
+//            lsFilter.add(" a.sIndstCde  = " + SQLUtil.toSQL(poGRider.getIndustry()));
+//        }
+//
+//        if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
+//            lsSQL += " WHERE " + String.join(" AND ", lsFilter);
+//        }
+//        System.out.println("SearchParent : " + lsSQL ) ;
 
         poJSON = ShowDialogFX.Search(poGRider,
                 lsSQL,
@@ -408,15 +408,15 @@ public class AccountChart extends Parameter {
     public String getSQ_Browse() {
         String lsCondition = "";
 //
-//        if (psRecdStat.length() > 1) {
-//            for (int lnCtr = 0; lnCtr <= psRecdStat.length() - 1; lnCtr++) {
-//                lsCondition += ", " + SQLUtil.toSQL(Character.toString(psRecdStat.charAt(lnCtr)));
-//            }
-//
-//            lsCondition = "a.cRecdStat IN (" + lsCondition.substring(2) + ")";
-//        } else {
-//            lsCondition = "a.cRecdStat = " + SQLUtil.toSQL(psRecdStat);
-//        }
+        if (psRecdStat.length() > 1) {
+            for (int lnCtr = 0; lnCtr <= psRecdStat.length() - 1; lnCtr++) {
+                lsCondition += ", " + SQLUtil.toSQL(Character.toString(psRecdStat.charAt(lnCtr)));
+            }
+
+            lsCondition = "a.cRecdStat IN (" + lsCondition.substring(2) + ")";
+        } else {
+            lsCondition = "a.cRecdStat = " + SQLUtil.toSQL(psRecdStat);
+        }
 
         String lsSQL = "SELECT"
                 + "  a.sAcctCode"
@@ -1085,4 +1085,8 @@ public class AccountChart extends Parameter {
         loRS.close();
         return loJSON;
     }
+
+
+
+
 }
