@@ -617,7 +617,7 @@ public class PaymentRequest extends Transaction {
      */
     public JSONObject AddDetail() throws CloneNotSupportedException {
         if (getDetailCount() > 0) {
-            if (Detail(getDetailCount() - 1).getParticularID().isEmpty() && Detail(getDetailCount() - 1).getAmount() == 0.0000) {
+            if ((Detail(getDetailCount() - 1).getParticularID() == null || "".equals(Detail(getDetailCount() - 1).getParticularID())) && Detail(getDetailCount() - 1).getAmount() == 0.0000) {
                 poJSON = new JSONObject();
                 poJSON.put("result", "error");
                 poJSON.put("message", "Last row has empty item.");
