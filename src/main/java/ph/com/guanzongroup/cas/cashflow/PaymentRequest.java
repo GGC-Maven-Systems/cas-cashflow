@@ -67,13 +67,14 @@ public class PaymentRequest extends Transaction {
     
     List<TransactionAttachment> paAttachments;
     List<Model_PO_Master> paPOMaster;
-//    List<Model_Recurring_Issuance> paRecurring;
     List<Model_Payment_Request_Master> poPRFMaster;
     List<RecurringIssuance> poRecurringIssuances;
-    String psParticularID;
-    String psAccountNo;
-    private boolean pbApproval = false;
 
+    /**
+     * Initializes payment request models and working lists for transaction use.
+     *
+     * @return JSON result from transaction initialization.
+     */
     public JSONObject InitTransaction() {
         SOURCE_CODE = "PRFx";
 
@@ -82,7 +83,6 @@ public class PaymentRequest extends Transaction {
         paDetail = new ArrayList<>();
         paAttachments = new ArrayList<>();
         paPOMaster = new ArrayList<>();
-//        poRecurringIssuances = new ArrayList<>();
 
         return initialize();
     }
@@ -111,6 +111,16 @@ public class PaymentRequest extends Transaction {
         return updateTransaction();
     }
     
+    /**
+     * Confirms the current transaction and applies updates to linked recurring records.
+     *
+     * @param remarks Remarks for status history.
+     * @return JSON result containing status and message.
+     * @throws ParseException If date parsing fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public JSONObject ConfirmTransaction(String remarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException {
 
         poJSON = new JSONObject();
@@ -236,6 +246,16 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Marks the current payment request as paid.
+     *
+     * @param remarks Remarks for status history.
+     * @return JSON result containing status and message.
+     * @throws ParseException If date parsing fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public JSONObject PaidTransaction(String remarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException {
 
         poJSON = new JSONObject();
@@ -280,6 +300,16 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Cancels the current payment request and performs dependency checks.
+     *
+     * @param remarks Remarks for status history.
+     * @return JSON result containing status and message.
+     * @throws ParseException If date parsing fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public JSONObject CancelTransaction(String remarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException {
         poJSON = new JSONObject();
 
@@ -385,11 +415,6 @@ public class PaymentRequest extends Transaction {
 
         poGRider.commitTrans();
 
-//        poJSON = statusChange(poMaster.getTable(), (String) poMaster.getValue("sTransNox"), remarks, lsStatus, !lbConfirm);
-//        if (!"success".equals((String) poJSON.get("result"))) {
-//            return poJSON;
-//        }
-
         poJSON = new JSONObject();
         poJSON.put("result", "success");
 
@@ -402,6 +427,16 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Voids the current payment request transaction.
+     *
+     * @param remarks Remarks for status history.
+     * @return JSON result containing status and message.
+     * @throws ParseException If date parsing fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public JSONObject VoidTransaction(String remarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException {
         poJSON = new JSONObject();
 
@@ -457,6 +492,16 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Posts the current payment request transaction.
+     *
+     * @param remarks Remarks for status history.
+     * @return JSON result containing status and message.
+     * @throws ParseException If date parsing fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public JSONObject PostTransaction(String remarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException {
         poJSON = new JSONObject();
 
@@ -498,6 +543,16 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Returns the current transaction to a previous workflow status.
+     *
+     * @param remarks Remarks for status history.
+     * @return JSON result containing status and message.
+     * @throws ParseException If date parsing fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public JSONObject ReturnTransaction(String remarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException {
         poJSON = new JSONObject();
 
@@ -554,6 +609,12 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Adds a new detail row after validating the previous row is complete.
+     *
+     * @return JSON result containing status and message.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public JSONObject AddDetail() throws CloneNotSupportedException {
         if (getDetailCount() > 0) {
             if (Detail(getDetailCount() - 1).getParticularID().isEmpty()) {
@@ -567,6 +628,11 @@ public class PaymentRequest extends Transaction {
     }
     
     /*Validate*/
+    /**
+     * Reverses or removes a detail row based on duplicate particular detection.
+     *
+     * @param row Detail row index to process.
+     */
     public void ReverseItem(int row){
         int lnExist = 0;
         for (int lnCtr = 0; lnCtr <= getDetailCount()- 1; lnCtr++) {
@@ -589,10 +655,6 @@ public class PaymentRequest extends Transaction {
         return new SysTableContollers(poGRider, null).TransactionAttachment();
     }
 
-    private List<TransactionAttachment> TransactionAttachmentList() {
-        return paAttachments;
-    }
-
     public TransactionAttachment TransactionAttachmentList(int row) {
         return (TransactionAttachment) paAttachments.get(row);
     }
@@ -605,6 +667,13 @@ public class PaymentRequest extends Transaction {
         return paAttachments.size();
     }
 
+    /**
+     * Adds a new blank transaction attachment entry.
+     *
+     * @return JSON result containing status and message.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If attachment model operations fail.
+     */
     public JSONObject addAttachment()
             throws SQLException,
             GuanzonException {
@@ -626,6 +695,14 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
     
+    /**
+     * Removes or deactivates an attachment entry by row index.
+     *
+     * @param fnRow Attachment row index.
+     * @return JSON result containing status and message.
+     * @throws GuanzonException If attachment model operations fail.
+     * @throws SQLException If a database access error occurs.
+     */
     public JSONObject removeAttachment(int fnRow) throws GuanzonException, SQLException{
         poJSON = new JSONObject();
         if(getTransactionAttachmentCount() <= 0){
@@ -646,6 +723,14 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
     
+    /**
+     * Adds or reactivates an attachment record for the provided file name.
+     *
+     * @param fFileName Attachment file name.
+     * @return Row index of the active attachment entry.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If attachment model operations fail.
+     */
     public int addAttachment(String fFileName) throws SQLException, GuanzonException{
         for(int lnCtr = 0;lnCtr <= getTransactionAttachmentCount() - 1;lnCtr++){
             if(fFileName.equals(paAttachments.get(lnCtr).getModel().getFileName())
@@ -663,6 +748,11 @@ public class PaymentRequest extends Transaction {
         return getTransactionAttachmentCount() - 1;
     }
     
+    /**
+     * Copies a local file into the temporary attachment directory.
+     *
+     * @param fsPath Source file path.
+     */
     public void copyFile(String fsPath){
         Path source = Paths.get(fsPath);
         Path targetDir = Paths.get(System.getProperty("sys.default.path.temp.attachments"));
@@ -683,6 +773,13 @@ public class PaymentRequest extends Transaction {
         }
     }
 
+    /**
+     * Loads and downloads existing attachments of the current transaction.
+     *
+     * @return JSON result containing status and message.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If attachment model operations fail.
+     */
     public JSONObject loadAttachments()
             throws SQLException,
             GuanzonException {
@@ -949,6 +1046,15 @@ public class PaymentRequest extends Transaction {
                 + " LEFT JOIN Payee d ON a.sPayeeIDx = d.sPayeeIDx";
     }
 
+    /**
+     * Opens a transaction selected from browse results.
+     *
+     * @param fsValue Search keyword for browse.
+     * @return JSON result containing status and message.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     public JSONObject SearchTransaction(String fsValue) throws CloneNotSupportedException, SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsTransStat = "";
@@ -961,8 +1067,6 @@ public class PaymentRequest extends Transaction {
             lsTransStat = " AND a.cTranStat = " + SQLUtil.toSQL(psTranStat);
         }
         initSQL();
-//        String lsFilterCondition = String.join(" AND ", "a.sPayeeIDx LIKE " + SQLUtil.toSQL("%" + Master().getPayeeID()),
-//                " b.sBranchCd = " + SQLUtil.toSQL(Master().getBranchCode()));
         String lsSQL = MiscUtil.addCondition(SQL_BROWSE, " ( a.sTransNox LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%")
                                                     + " OR a.sSourceNo LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%") //add source no in condition requested by ma'am she - Arsiela 05-22-2026
                                                     + " ) "
@@ -1074,6 +1178,17 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Searches a particular and assigns it to the requested detail row.
+     *
+     * @param value Search value.
+     * @param byCode {@code true} when searching by code.
+     * @param row Detail row index.
+     * @return JSON result containing status, message, and row.
+     * @throws ExceptionInInitializerError If search controller initialization fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     public JSONObject SearchParticular(String value, boolean byCode, int row) throws ExceptionInInitializerError, SQLException, GuanzonException {
         Particular object = new CashflowControllers(poGRider, logwrapr).Particular();
         object.setRecordStatus("1");
@@ -1125,6 +1240,11 @@ public class PaymentRequest extends Transaction {
         return (Model_Payment_Request_Detail) paDetail.get(row);
     }
     
+    /**
+     * Cleans and rebuilds detail rows to keep the detail list valid.
+     *
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     public void ReloadDetail() throws CloneNotSupportedException{
         int lnCtr = getDetailCount() - 1;
         while (lnCtr >= 0) {
@@ -1157,6 +1277,14 @@ public class PaymentRequest extends Transaction {
     }
 
     @Override
+    /**
+     * Runs save-time validations and applies final field assignments.
+     *
+     * @return JSON result containing validation/save-precheck status.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     public JSONObject willSave() throws CloneNotSupportedException, SQLException, GuanzonException {
         /*Put system validations and other assignments here*/
         poJSON = new JSONObject();
@@ -1223,10 +1351,6 @@ public class PaymentRequest extends Transaction {
                     if (lbUpdated) {
                         lbUpdated = loRecord.Detail(lnCtr).getAmount() == Detail(lnCtr).getAmount();
                     }
-                    //FOR FUTURE
-//                    if (lbUpdated) {
-//                        lbUpdated = loRecord.Detail(lnCtr).getAddDiscount().doubleValue() == Detail(lnCtr).getAddDiscount().doubleValue();
-//                    }
                     if (!lbUpdated) {
                         break;
                     }
@@ -1289,17 +1413,6 @@ public class PaymentRequest extends Transaction {
             }
         }
 
-        //attachement checker
-//        if (getTransactionAttachmentCount() > 0) {
-//            Iterator<TransactionAttachment> attachment = TransactionAttachmentList().iterator();
-//            while (attachment.hasNext()) {
-//                TransactionAttachment item = attachment.next();
-//
-//                if ((String) item.getModel().getFileName() == null || "".equals(item.getModel().getFileName())) {
-//                    attachment.remove();
-//                }
-//            }
-//        }
         //assign other info on attachment
         for (int lnCtr = 0; lnCtr <= getTransactionAttachmentCount()- 1; lnCtr++) {
             TransactionAttachmentList(lnCtr).getModel().setSourceNo(Master().getTransactionNo());
@@ -1377,6 +1490,14 @@ public class PaymentRequest extends Transaction {
         return isEntryOkay(PaymentRequestStatus.OPEN);
     }
     
+    /**
+     * Checks whether a file name already exists in attachment records.
+     *
+     * @param fsFileName File name to validate.
+     * @return JSON result indicating duplicate detection.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If attachment model operations fail.
+     */
     public JSONObject checkExistingFileName(String fsFileName) throws SQLException, GuanzonException{
         poJSON = new JSONObject();
         
@@ -1462,6 +1583,13 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
     
+    /**
+     * Encodes a file into Base64 string content for upload.
+     *
+     * @param file File to encode.
+     * @return Base64-encoded content.
+     * @throws Exception If file reading fails.
+     */
     private static String encodeFileToBase64Binary(File file) throws Exception{
          FileInputStream fileInputStreamReader = new FileInputStream(file);
          byte[] bytes = new byte[(int)file.length()];
@@ -1470,6 +1598,12 @@ public class PaymentRequest extends Transaction {
     } 
     
     private static JSONObject token = null;
+    /**
+     * Loads and refreshes API access token from a local token file.
+     *
+     * @param access Token file path.
+     * @return Access key value, or {@code null} when unavailable.
+     */
     private static String getAccessToken(String access){
         try {
             JSONParser oParser = new JSONParser();
@@ -1499,6 +1633,11 @@ public class PaymentRequest extends Transaction {
     }
 
     @Override
+    /**
+     * Saves related child records after the master transaction is saved.
+     *
+     * @return JSON result containing status.
+     */
     public JSONObject saveOthers() {
         poJSON = new JSONObject();
         try {
@@ -1516,11 +1655,6 @@ public class PaymentRequest extends Transaction {
                 }
             }
 
-//            poJSON = recurringIssuanceTagging();
-//            if (!"success".equals((String) poJSON.get("result"))) {
-//                poGRider.rollbackTrans();
-//                return poJSON;
-//            }
         } catch (SQLException | GuanzonException | CloneNotSupportedException ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
         }
@@ -1551,163 +1685,6 @@ public class PaymentRequest extends Transaction {
         poJSON = loValidator.validate();
         return poJSON;
     }
-
-    private Model_Recurring_Issuance Recurring_IssuanceList() {
-        return new CashflowModels(poGRider).Recurring_Issuance();
-    }
-
-//    public Model_Recurring_Issuance Recurring_Issuance(int row) {
-//        return (Model_Recurring_Issuance) paRecurring.get(row);
-//    }
-//
-//    public int getRecurring_IssuanceCount() {
-//        if (paRecurring == null) {
-//            return 0;
-//        }
-//        return paRecurring.size();
-//    }
-//
-//    public JSONObject loadRecurringIssuance() throws SQLException, GuanzonException {
-//        JSONObject loJSON = new JSONObject();
-//        String lsSQL = "SELECT "
-//                + "  b.sBranchNm, "
-//                + "  a.sBranchCd, "
-//                + "  a.dBillDate, "
-//                + "  a.dDueUntil, "
-//                + "  a.sPrtclrID, "
-//                + "  e.sDescript, "
-//                + "  a.sPayeeIDx, "
-//                + "  a.sAcctNoxx, "
-//                + "  a.sLastRqNo, "
-//                + "  f.dTransact, "
-//                + "  DATE_SUB(DATE_ADD(f.dTransact, INTERVAL 1 MONTH), INTERVAL 5 DAY) AS nextDue, "
-//                + "  CASE "
-//                + "    WHEN CURRENT_DATE = DATE_SUB(DATE_ADD(f.dTransact, INTERVAL 1 MONTH), INTERVAL 5 DAY) THEN 1 "
-//                + "    ELSE 0 "
-//                + "  END AS is5DaysBeforeDue, "
-//                + "  CASE "
-//                + "    WHEN CURRENT_DATE >= DATE_ADD(f.dTransact, INTERVAL 1 MONTH) THEN 1 "
-//                + "    ELSE 0 "
-//                + "  END AS currentDue "
-//                + " FROM "
-//                + "  Recurring_Issuance a "
-//                + "  LEFT JOIN Branch b ON a.sBranchCd = b.sBranchCd "
-//                + "  LEFT JOIN Payee c ON a.sPayeeIDx = c.sPayeeIDx "
-//                + "  LEFT JOIN Client_Master d ON c.sClientID = d.sClientID "
-//                + "  LEFT JOIN Particular e ON a.sPrtclrID = e.sPrtclrID "
-//                + "  LEFT JOIN Payment_Request_Master f ON f.sTransNox = a.sLastRqNo ";
-//
-//        String lsFilterCondition = String.join(" AND ",
-//                " a.sBranchCd = " + SQLUtil.toSQL(Master().getBranchCode()),
-//                " a.sPayeeIDx LIKE " + SQLUtil.toSQL("%" + Master().getPayeeID()),
-//                " a.cRecdStat = " + SQLUtil.toSQL(Logical.YES));
-//        lsSQL = MiscUtil.addCondition(lsSQL, lsFilterCondition);
-//        
-//        System.out.println("Executing SQL: " + lsSQL);
-//        ResultSet loRS = poGRider.executeQuery(lsSQL);
-//
-//        int lnCtr = 0;
-//        if (MiscUtil.RecordCount(loRS) >= 0) {
-//            paRecurring = new ArrayList<>();
-//            while (loRS.next()) {
-//                // Print the result set
-//                System.out.println("sPrtclrID: " + loRS.getString("sPrtclrID"));
-//                System.out.println("sBranchCd: " + loRS.getString("sBranchCd"));
-//                System.out.println("sBranchCd: " + loRS.getString("sBranchCd"));
-//                System.out.println("------------------------------------------------------------------------------");
-//
-//                paRecurring.add(Recurring_IssuanceList());
-//                paRecurring.get(paRecurring.size() - 1).openRecord(loRS.getString("sPrtclrID"),
-//                        loRS.getString("sBranchCd"),
-//                        loRS.getString("sPayeeIDx"),
-//                        loRS.getString("sAcctNoxx"));
-//                lnCtr++;
-//            }
-//            System.out.println("Records found: " + lnCtr);
-//            loJSON.put("result", "success");
-//            loJSON.put("message", "Record loaded successfully.");
-//        } else {
-//            paRecurring = new ArrayList<>();
-//            paRecurring.add(Recurring_IssuanceList());
-//            loJSON.put("result", "error");
-//            loJSON.put("continue", true);
-//            loJSON.put("message", "No record found .");
-//        }
-//        MiscUtil.close(loRS);
-//        return loJSON;
-//    }
-//
-//    public JSONObject addRecurringIssuanceToPaymentRequestDetail(String particularNo, String payeeID, String AcctNo) throws CloneNotSupportedException, SQLException, GuanzonException {
-//        poJSON = new JSONObject();
-//        boolean lbExist = false;
-//        int lnRow = 0;
-//        RecurringIssuance poRecurringIssuance;
-//        psAccountNo = AcctNo;
-//        psParticularID = particularNo;
-//
-//        // Initialize RecurringIssuance and load the record
-//        poRecurringIssuance = new CashflowControllers(poGRider, logwrapr).RecurringIssuance();
-//        poJSON = poRecurringIssuance.openRecord(particularNo, Master().getBranchCode(), payeeID, AcctNo);
-//
-//        // Check if openRecord returned an error
-//        if ("error".equals(poJSON.get("result"))) {
-//            poJSON.put("result", "error");
-//            return poJSON;
-//        }
-//        if (getPaymentStatusFromIssuanceLastPRFNo(poRecurringIssuance.getModel().getLastPRFTrans()).equals(PaymentRequestStatus.PAID)) {
-//            poJSON.put("message", "Invalid addition of recurring issuance: already marked as paid.");
-//            poJSON.put("result", "error");
-//            poJSON.put("warning", "true");
-//            return poJSON;
-//        }
-//
-//        // Validate if the payee in Master is different from the payee in the RecurringIssuance
-//        if (!Master().getPayeeID().isEmpty()) {
-//            if (!Master().getPayeeID().equals(poRecurringIssuance.getModel().getPayeeID())) {
-//                poJSON.put("message", "Invalid addition of recurring issuance; another payee already exists.");
-//                poJSON.put("result", "error");
-//                poJSON.put("warning", "true");
-//                return poJSON;
-//            }
-//        }
-//
-//        // Check if the particular already exists in the details
-//        for (lnRow = 0; lnRow < getDetailCount(); lnRow++) {
-//            // Skip if the particular ID is empty
-//            if (Detail(lnRow).getParticularID() == null || Detail(lnRow).getParticularID().isEmpty()) {
-//                continue;
-//            }
-//
-//            // Compare with the current record's particular ID
-//            if (Detail(lnRow).getParticularID().equals(poRecurringIssuance.getModel().getParticularID())) {
-//                lbExist = true;
-//                break; // Stop checking once a match is found
-//            }
-//        }
-//
-//        // If the particular doesn't exist, proceed to add it
-//        if (!lbExist) {
-//            // Make sure you're writing to an empty row
-//            Detail(getDetailCount() - 1).setParticularID(poRecurringIssuance.getModel().getParticularID());
-//            Detail(getDetailCount() - 1).setAmount(poRecurringIssuance.getModel().getAmount());
-//            Master().setPayeeID(poRecurringIssuance.getModel().getPayeeID());
-//
-//            // Only add the detail if it's not empty
-//            if (Detail(getDetailCount() - 1).getParticularID() != null && !Detail(getDetailCount() - 1).getParticularID().isEmpty()) {
-//                AddDetail();
-//            }
-//        } else {
-//            poJSON.put("result", "error");
-//            poJSON.put("message", "Particular: " + Detail(lnRow).Recurring().Particular().getDescription() + " already exists in table at row " + (lnRow + 1) + ".");
-//            poJSON.put("tableRow", lnRow);
-//            poJSON.put("warning", "false");
-//            return poJSON;
-//        }
-//
-//        // Return success
-//        poJSON.put("result", "success");
-//        return poJSON;
-//    }
     
     private Model_PO_Master PurchaseOrderMaster() {
         return new PurchaseOrderModels(poGRider).PurchaseOrderMaster();
@@ -1724,6 +1701,13 @@ public class PaymentRequest extends Transaction {
         return paPOMaster.size();
     }
     
+    /**
+     * Loads payable purchase orders for the current branch/payee filters into the local payable list.
+     *
+     * @return JSON result with load status and message.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If PO model operations fail.
+     */
     public JSONObject loadPayables() throws SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsCompanyId = poGRider.getCompnyId();
@@ -1793,6 +1777,15 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
     
+    /**
+     * Loads a purchase order into PRF detail context and aligns source/payee fields.
+     *
+     * @param transactionNo Purchase order transaction number to load.
+     * @return JSON result with status, message, and warning flags when applicable.
+     * @throws CloneNotSupportedException If model cloning fails while preparing detail rows.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     public JSONObject populateDetail(String transactionNo)
             throws CloneNotSupportedException,
             SQLException,
@@ -1860,6 +1853,14 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Loads PO attachments, downloads files, and stages them for PRF attachment mapping.
+     *
+     * @param fsTransactionNo Purchase order transaction number.
+     * @return JSON result from the last attachment processing step.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If attachment model operations fail.
+     */
     public JSONObject loadPOAttachment(String fsTransactionNo)
             throws SQLException,
             GuanzonException {
@@ -1920,11 +1921,12 @@ public class PaymentRequest extends Transaction {
     }
 
     /**
+     * Adds PO attachments into the PRF attachment list, skipping duplicate file names.
      *
-     * @param faAttachments
-     * @return
-     * @throws SQLException
-     * @throws GuanzonException
+     * @param faAttachments Attachments loaded from the selected purchase order.
+     * @return JSON result with success status after merge.
+     * @throws SQLException If a database access error occurs while adding attachments.
+     * @throws GuanzonException If attachment model operations fail.
      */
     private JSONObject addPOAttchmentToPRF(List<TransactionAttachment>  faAttachments)
             throws SQLException,
@@ -1956,13 +1958,16 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Recomputes transaction totals from detail amounts and discounts.
+     *
+     * @return JSON result containing status.
+     */
     public JSONObject computeFields() {
         poJSON = new JSONObject();
         double ldblTransactionTotal = 0.0000;
         double ldblNetTotal = 0.0000;
         double ldblDiscountAmount = 0.0000;
-//        double ldblVatAmount = 0.0000; //Disable vat computation for PRF as per ma'am she 03-03-2026
-//        double ldblVatExempt = 0.0000;
 
         double ldblDetailDiscountRate = 0.0000;
         for (int lnCtr = 0; lnCtr <= getDetailCount() - 1; lnCtr++) {
@@ -1971,25 +1976,17 @@ public class PaymentRequest extends Transaction {
                 
                 ldblDetailDiscountRate = 0.0000;
                 if(Detail(lnCtr).getDiscount() > 0.0000){
-//                    ldblDetailDiscountRate = Detail(lnCtr).getAmount()* (Detail(lnCtr).getDiscount() / 100);
                     ldblDetailDiscountRate = Detail(lnCtr).getAmount() * Detail(lnCtr).getDiscount();
                 }
                 ldblDiscountAmount += (Detail(lnCtr).getAddDiscount() + ldblDetailDiscountRate);
                 
                 ldblNetTotal += Detail(lnCtr).getNetTotal();
-                
-//                if(Detail(lnCtr).isVatable()){
-//                    ldblVatAmount += Detail(lnCtr).getVatAmount();
-//                } else {
-//                    ldblVatExempt += Detail(lnCtr).getNetTotal();
-//                }
+
             }
         }
         
         Master().setTranTotal(ldblTransactionTotal);
         Master().setDiscountAmount(ldblDiscountAmount);
-//        Master().setVatAmount(ldblVatAmount);
-//        Master().setVatExempt(ldblVatExempt);
         Master().setNetTotal(ldblNetTotal);
         return poJSON;
     }
@@ -2045,7 +2042,6 @@ public class PaymentRequest extends Transaction {
             return poJSON;
         }
 
-//        double ldblDetailDiscountRate = Detail(row).getAmount() * (Detail(row).getDiscount() / 100);
         double ldblDetailDiscountRate = Detail(row).getAmount() * Detail(row).getDiscount();
         if(Detail(row).getAmount() < (fdblAdditionalDiscount + ldblDetailDiscountRate)){
             poJSON.put("message", "Computed total discount cannot be greater than the detail amount.");
@@ -2057,6 +2053,11 @@ public class PaymentRequest extends Transaction {
         return poJSON;   
     }
 
+    /**
+     * Checks if detail rows contain zero-amount entries.
+     *
+     * @return JSON result describing zero-amount validation state.
+     */
     public JSONObject isDetailHasZeroAmount() {
         poJSON = new JSONObject();
         int zeroAmountRow = -1;
@@ -2107,6 +2108,16 @@ public class PaymentRequest extends Transaction {
         paAttachments = new ArrayList<>();
     }
 
+    /**
+     * Opens a transaction selected from browse results filtered by payee.
+     *
+     * @param fsValue Search keyword for browse.
+     * @param fsPayeeID Payee filter value.
+     * @return JSON result containing status and message.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     public JSONObject SearchTransaction(String fsValue, String fsPayeeID) throws CloneNotSupportedException, SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsTransStat = "";
@@ -2119,12 +2130,6 @@ public class PaymentRequest extends Transaction {
             lsTransStat = " AND a.cTranStat = " + SQLUtil.toSQL(psTranStat);
         }
         initSQL();
-//        String lsFilterCondition = String.join(" AND ", "a.sIndstCdx = " + SQLUtil.toSQL(Master().getIndustryID()),
-//                " a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID()),
-//                " a.sPayeeIDx LIKE " + SQLUtil.toSQL("%" + fsPayeeID),
-//                " b.sBranchCd = " + SQLUtil.toSQL(Master().getBranchCode()));
-//        String lsSQL = MiscUtil.addCondition(SQL_BROWSE, " b.sBranchCd = " + SQLUtil.toSQL(poGRider.getBranchCode())
-//                                                        + " AND a.sPayeeIDx LIKE " + SQLUtil.toSQL("%" + fsPayeeID));
         String lsSQL = MiscUtil.addCondition(SQL_BROWSE, " ( a.sTransNox LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%")
                                                     + " OR a.sSourceNo LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%") //add source no in condition requested by ma'am she - Arsiela 05-22-2026
                                                     + " ) "
@@ -2162,6 +2167,15 @@ public class PaymentRequest extends Transaction {
         }
     }
 
+    /**
+     * Loads payment request records matching transaction and payee filters.
+     *
+     * @param fsTransactionNo Transaction number filter.
+     * @param fsPayee Payee filter.
+     * @return JSON result containing load status.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     public JSONObject getPaymentRequest(String fsTransactionNo, String fsPayee) throws SQLException, GuanzonException {
         JSONObject loJSON = new JSONObject();
         String lsTransStat = "";
@@ -2178,7 +2192,6 @@ public class PaymentRequest extends Transaction {
         String lsFilterCondition = String.join(" AND ",
                 " a.sPayeeIDx LIKE " + SQLUtil.toSQL("%" + fsPayee),
                 " a.sTransNox  LIKE " + SQLUtil.toSQL("%" + fsTransactionNo),
-//              " SUBSTRING(a.sTransNox,1,4) = " + SQLUtil.toSQL(poGRider.getBranchCode()),
                 " a.cProcessd = "  + SQLUtil.toSQL(Logical.NO));
         String lsSQL = MiscUtil.addCondition(SQL_BROWSE, lsFilterCondition);
         
@@ -2242,43 +2255,15 @@ public class PaymentRequest extends Transaction {
         return (Model_Payment_Request_Master) poPRFMaster.get(row);
     }
 
-//    private JSONObject recurringIssuanceTagging()
-//            throws CloneNotSupportedException {
-//        poJSON = new JSONObject();
-//        int lnCtr;
-//        try {
-//            RecurringIssuance poRecurringIssuance = new CashflowControllers(poGRider, logwrapr).RecurringIssuance();
-//
-//                poJSON = poRecurringIssuance.openRecord(psParticularID,Master().getBranchCode(),Master().getPayeeID(),psAccountNo);
-//                if ("error".equals((String) poJSON.get("result"))) {
-//                    poJSON.put("result", "error");
-//                    return poJSON;
-//                }
-//                poJSON = poRecurringIssuance.updateRecord();
-//                if ("error".equals((String) poJSON.get("result"))) {
-//                    poJSON.put("result", "error");
-//                    return poJSON;
-//                }
-//                for (lnCtr = 0; lnCtr <= poRecurringIssuances.size() - 1; lnCtr++) {
-//                    poRecurringIssuances.get(lnCtr).poModel.setLastPRFTrans(Master().getTransactionNo());
-//                    poRecurringIssuances.get(lnCtr).poModel.setModifyingId(poGRider.getUserID());
-//                    poRecurringIssuances.get(lnCtr).poModel.setModifiedDate(poGRider.getServerDate());
-//                }
-//                poRecurringIssuance.setWithParentClass(true);
-//                poJSON = poRecurringIssuance.saveRecord();
-//                if ("error".equals((String) poJSON.get("result"))) {
-//                    return poJSON;
-//                }
-//
-//        } catch (SQLException  | GuanzonException ex) {
-//            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
-//            poJSON.put("result", "error");
-//            poJSON.put("message", MiscUtil.getException(ex));
-//            return poJSON;
-//        }
-//        poJSON.put("result", "success");
-//        return poJSON;
-//    }
+    /**
+     * Applies status-based updates to related recurring issuance records.
+     *
+     * @param status Transaction status to propagate.
+     * @return JSON result containing status.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     */
     private JSONObject setValueToOthers(String status)
             throws CloneNotSupportedException, SQLException, GuanzonException {
 
@@ -2308,6 +2293,17 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Checks if a recurring issuance record exists for the given keys.
+     *
+     * @param particularID Particular id.
+     * @param branch Branch code.
+     * @param payee Payee id.
+     * @param accountNo Account number.
+     * @return {@code true} if matching issuance exists.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If recurring model operations fail.
+     */
     private boolean isRecurringIssuance(String particularID, String branch, String payee, String accountNo)
             throws SQLException, GuanzonException {
 
@@ -2327,6 +2323,17 @@ public class PaymentRequest extends Transaction {
         return new CashflowControllers(poGRider, logwrapr).RecurringIssuance();
     }
 
+    /**
+     * Updates recurring issuance metadata for the current payment request.
+     *
+     * @param particularID Particular id.
+     * @param branch Branch code.
+     * @param payee Payee id.
+     * @param accountNo Account number.
+     * @throws GuanzonException If recurring model operations fail.
+     * @throws SQLException If a database access error occurs.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
     private void updateRecurringIssuance(String particularID, String branch, String payee, String accountNo)
             throws GuanzonException, SQLException, CloneNotSupportedException {
 
@@ -2354,6 +2361,14 @@ public class PaymentRequest extends Transaction {
         System.out.println("Edit Mode (after): " + issuance.poModel.getEditMode());
     }
 
+    /**
+     * Saves pending recurring issuance updates collected during status changes.
+     *
+     * @return JSON result containing save status.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If recurring model operations fail.
+     */
     private JSONObject saveUpdates()
             throws CloneNotSupportedException, SQLException, GuanzonException {
         poJSON = new JSONObject();
@@ -2373,6 +2388,12 @@ public class PaymentRequest extends Transaction {
         return poJSON;
     }
 
+    /**
+     * Gets the next branch-specific PRF series number.
+     *
+     * @return Next series number padded to 10 digits.
+     * @throws SQLException If a database access error occurs.
+     */
     public String getSeriesNoByBranch() throws SQLException {
         String lsSQL = "SELECT sSeriesNo FROM Payment_Request_Master";
         lsSQL = MiscUtil.addCondition(lsSQL,
@@ -2399,6 +2420,13 @@ public class PaymentRequest extends Transaction {
         return branchSeriesNo;
     }
 
+    /**
+     * Retrieves payment status using recurring issuance last PRF reference.
+     *
+     * @param lastPRFNo Last PRF number.
+     * @return Payment status code or empty string when not found.
+     * @throws SQLException If a database access error occurs.
+     */
     public String getPaymentStatusFromIssuanceLastPRFNo(String lastPRFNo) throws SQLException {
         String status = "";
         String lsSQL = "SELECT b.cTranStat "
@@ -2419,6 +2447,13 @@ public class PaymentRequest extends Transaction {
         return status;
     }
     
+    /**
+     * Loads and displays status history for the current payment request.
+     *
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws Exception If history UI rendering fails.
+     */
     public void ShowStatusHistory() throws SQLException, GuanzonException, Exception{
         CachedRowSet crs = getStatusHistory();
         
@@ -2492,6 +2527,13 @@ public class PaymentRequest extends Transaction {
         
         showStatusHistoryUI("Payment Request", (String) poMaster.getValue("sTransNox"), entryBy, entryDate, crs);
     }
+    /**
+     * Resolves entry user and entry datetime from audit logs.
+     *
+     * @return JSON result containing entry user and entry date.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If user lookup operations fail.
+     */
     public JSONObject getEntryBy() throws SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsEntry = "";
@@ -2530,6 +2572,14 @@ public class PaymentRequest extends Transaction {
         poJSON.put("sEntryDte", lsEntryDate);
         return poJSON;
     }
+    /**
+     * Gets display name of a system user by user id.
+     *
+     * @param fsId User id.
+     * @return User display name, or empty string if not found.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If user lookup operations fail.
+     */
     public String getSysUser(String fsId) throws SQLException, GuanzonException {
         String lsEntry = "";
         String lsSQL =   " SELECT b.sCompnyNm from xxxSysUser a " 
