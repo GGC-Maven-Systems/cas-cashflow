@@ -24,7 +24,9 @@ import org.apache.commons.codec.binary.Base64;
 import org.guanzon.appdriver.agent.ShowDialogFX;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.agent.services.Transaction;
+import org.guanzon.appdriver.agent.systables.Model_Transaction_Attachment;
 import org.guanzon.appdriver.agent.systables.SysTableContollers;
+import org.guanzon.appdriver.agent.systables.SysTableModels;
 import org.guanzon.appdriver.agent.systables.TransactionAttachment;
 import org.guanzon.appdriver.base.GRiderCAS;
 import org.guanzon.appdriver.base.GuanzonException;
@@ -1307,7 +1309,8 @@ public class PaymentRequest extends Transaction {
             
             String lsOriginalFileName = TransactionAttachmentList(lnCtr).getModel().getFileName();
             //Check existing file name in database
-            if(EditMode.ADDNEW == TransactionAttachmentList(lnCtr).getModel().getEditMode()){
+            if(EditMode.ADDNEW == TransactionAttachmentList(lnCtr).getModel().getEditMode()
+                && "0".equals(TransactionAttachmentList(lnCtr).getModel().getSendStatus())){
                 int lnCopies = 0;
                 String fsFilePath = TransactionAttachmentList(lnCtr).getModel().getImagePath() + "/" + TransactionAttachmentList(lnCtr).getModel().getFileName();
                 String lsNewFileName = TransactionAttachmentList(lnCtr).getModel().getFileName();
@@ -1848,41 +1851,110 @@ public class PaymentRequest extends Transaction {
         Master().setSourceNo(loObject.getTransactionNo());
         Master().setRemarks(loObject.getRemarks());
         Master().setSourceCode(InvTransCons.PURCHASE_ORDER);
+
+        //Populate PO Attachment to PRF
+        loadPOAttachment(loObject.getTransactionNo());
+
         poJSON.put("result", "success");
         poJSON.put("message", "success");
         return poJSON;
     }
-//
-//    public JSONObject computeNetPayableDetails(double rent, boolean isVatExclusive, double vatRate, double wtaxRate) {
-//        JSONObject result = new JSONObject();
-//        double baseRent;
-//        double vat;
-//        double whtax;
-//        double total;
-//        double netPayable;
-//
-//        if (isVatExclusive) {
-//            vat = rent * vatRate / (1 + vatRate);  // Extract VAT from total
-//            baseRent = rent - vat;
-//            whtax = baseRent * wtaxRate;
-//            total = rent;
-//            netPayable = total - whtax;
-//        } else {
-//            baseRent = rent;
-//            vat = rent * vatRate;
-//            total = rent + vat;
-//            whtax = rent * wtaxRate;
-//            netPayable = total - whtax;
-//        }
-//
-//        result.put("baseRent", baseRent);
-//        result.put("vat", vat);
-//        result.put("wtax", whtax);
-//        result.put("total", total);
-//        result.put("netPayable", netPayable);
-//        result.put("result", "success");
-//        return result;
-//    }
+
+    public JSONObject loadPOAttachment(String fsTransactionNo)
+            throws SQLException,
+            GuanzonException {
+        poJSON = new JSONObject();
+        paAttachments = new ArrayList<>();
+        List<TransactionAttachment>  laAttachments = new ArrayList<>();
+
+        TransactionAttachment loAttachment = new SysTableContollers(poGRider, null).TransactionAttachment();
+        List loList = loAttachment.getAttachments(InvTransCons.PURCHASE_ORDER, fsTransactionNo);
+        for (int lnCtr = 0; lnCtr <= loList.size() - 1; lnCtr++) {
+            TransactionAttachment loTransAttachment = new SysTableContollers(poGRider, null).TransactionAttachment();
+            poJSON = loTransAttachment.openRecord((String) loList.get(lnCtr));
+            if ("success".equals((String) poJSON.get("result"))) {
+                System.out.println("Attachment Record No: " + loTransAttachment.getModel().getTransactionNo());
+                System.out.println("Attachment Source No: " + loTransAttachment.getModel().getSourceNo());
+                System.out.println("Attachment Source Code: " + loTransAttachment.getModel().getSourceCode());
+                System.out.println("Attachment File Name: " + loTransAttachment.getModel().getFileName());
+            }
+
+            //Download Attachments
+            poJSON = WebFile.DownloadFile(WebFile.getAccessToken(System.getProperty("sys.default.access.token"))
+                    , "0032" //Constant
+                    , "" //Empty
+                    , loTransAttachment.getModel().getFileName()
+                    , InvTransCons.PURCHASE_ORDER
+                    , loTransAttachment.getModel().getSourceNo()
+                    , "");
+            if ("success".equals((String) poJSON.get("result"))) {
+
+                poJSON = (JSONObject) poJSON.get("payload");
+                if(WebFile.Base64ToFile((String) poJSON.get("data")
+                        , (String) poJSON.get("hash")
+                        , System.getProperty("sys.default.path.temp.attachments") + "/"
+                        , (String) poJSON.get("filename"))){
+                    System.out.println("poJSON success: " +  poJSON.toJSONString());
+                    System.out.println(" PO File downloaded succesfully.");
+
+                    //Populate Arraylist
+                    laAttachments.add(TransactionAttachment());
+                    laAttachments.set(laAttachments.size() - 1, loTransAttachment);
+
+                } else {
+                    poJSON = (JSONObject) poJSON.get("error");
+                    poJSON.put("result", "error");
+                    System.out.println("PO ERROR WebFile.DownloadFile: " + poJSON.get("message"));
+                    System.out.println("PO poJSON error WebFile.DownloadFile: " + poJSON.toJSONString());
+                }
+
+            } else {
+                System.out.println("PO poJSON error WebFile.DownloadFile: " + poJSON.toJSONString());
+            }
+        }
+
+        //Populate PRF Attachment
+        addPOAttchmentToPRF(laAttachments);
+
+        return poJSON;
+    }
+
+    /**
+     *
+     * @param faAttachments
+     * @return
+     * @throws SQLException
+     * @throws GuanzonException
+     */
+    private JSONObject addPOAttchmentToPRF(List<TransactionAttachment>  faAttachments)
+            throws SQLException,
+            GuanzonException {
+        poJSON = new JSONObject();
+        boolean lbExist = false;
+        //Add attachment to PRF
+        for (int lnCtr = 0; lnCtr <= faAttachments.size() - 1; lnCtr++) {
+            //Check if file name already exist in PRF attachment do not add
+            for(int lnRow = 0; lnRow <= getTransactionAttachmentCount() - 1; lnRow++){
+                if(faAttachments.get(lnCtr).getModel().getFileName().equals(paAttachments.get(lnRow).getModel().getFileName())){
+                    lbExist = true;
+                    break; //do not add
+                }
+            }
+
+            if(!lbExist){
+                addAttachment(faAttachments.get(faAttachments.size() - 1).getModel().getFileName());
+                paAttachments.get(getTransactionAttachmentCount() - 1).getModel().setDocumentType(faAttachments.get(faAttachments.size() - 1).getModel().getDocumentType());
+                paAttachments.get(getTransactionAttachmentCount() - 1).getModel().setMD5Hash(faAttachments.get(faAttachments.size() - 1).getModel().getMD5Hash());
+                paAttachments.get(getTransactionAttachmentCount() - 1).getModel().setImagePath(faAttachments.get(faAttachments.size() - 1).getModel().getImagePath());
+                paAttachments.get(getTransactionAttachmentCount() - 1).getModel().setSendStatus("1");
+            }
+            //clear
+            lbExist = false;
+        }
+
+        poJSON.put("result", "success");
+        return poJSON;
+    }
 
     public JSONObject computeFields() {
         poJSON = new JSONObject();
