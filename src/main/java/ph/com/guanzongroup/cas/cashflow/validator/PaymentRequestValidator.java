@@ -87,9 +87,15 @@ public class PaymentRequestValidator implements GValidator{
 //            }
 //        }
         
-        if (poMaster.getPayeeID()== null || poMaster.getPayeeID().isEmpty()) {
+        if (poMaster.getPayeeID()== null || "".equals(poMaster.getPayeeID())) {
             poJSON.put("result", "error");
             poJSON.put("message", "Payee information is missing or not set.");
+            return poJSON;
+        }
+        
+        if (poMaster.getRemarks() == null || "".equals(poMaster.getRemarks())) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "Remarks cannot be empty.");
             return poJSON;
         }
         
