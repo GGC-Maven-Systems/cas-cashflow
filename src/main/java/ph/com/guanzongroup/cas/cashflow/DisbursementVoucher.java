@@ -5879,12 +5879,17 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
             
             lsIssuedTo = loObj.getIssuedTo();
             lsClientId = loObj.getClientId();
-        } 
+        }
         
         if(lsIssuedTo != null && !"".equals(lsIssuedTo)){
             poJSON = loPayee.getModel().openRecord(lsIssuedTo); //Get the actual Payee setted for AP Payment Adjustment
         } else {
-            poJSON = loPayee.getModel().openRecordByReference(findPrimaryContactPerson(lsClientId));
+            String lsContactPerson = findPrimaryContactPerson(lsClientId);
+            if(lsContactPerson != null && !"".equals(lsContactPerson)){
+                poJSON = loPayee.getModel().openRecordByReference(lsContactPerson);
+            } else {
+                poJSON = loPayee.getModel().openRecordByReference(lsClientId);
+            }
         }
         
         if ("error".equals((String) poJSON.get("result"))) {
@@ -6008,11 +6013,16 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         }
         
         Double ldblBalance = loController.Master().getNetTotal().doubleValue() - loController.Master().getAmountPaid().doubleValue();
-        String lsClientId = findPrimaryContactPerson(loController.Master().getClientId());
+        String lsClientId = loController.Master().getClientId();
+        String lsContactPerson = findPrimaryContactPerson(lsClientId);
         String lsPayeeId = loController.Master().getIssuedTo();
         if(lsPayeeId == null || "".equals(lsPayeeId)){
             Model_Payee loPayee = new CashflowModels(poGRider).Payee();
-            poJSON = loPayee.openRecordByReference(lsClientId);
+            if(lsContactPerson != null && !"".equals(lsContactPerson)){
+                poJSON = loPayee.openRecordByReference(lsContactPerson);
+            } else {
+                poJSON = loPayee.openRecordByReference(lsClientId);
+            }
             if ("error".equals((String) poJSON.get("result"))) {
                 poJSON.put("row", 0);
                 poJSON.put("message", ((String) poJSON.get("message") + "\nPlease contact system administrator to check data of Payee for supplier " + loController.Master().Supplier().getCompanyName() + "."));
@@ -6143,7 +6153,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                         if(lsIssuedTo != null && !"".equals(lsIssuedTo)){
                             poJSON = loPayee.getModel().openRecord(lsIssuedTo); //Get the actual Payee setted for AP Payment Adjustment
                         } else {
-                            String lsContactPerson = findPrimaryContactPerson(lsClientId);
+                            lsContactPerson = findPrimaryContactPerson(lsClientId);
                             if(lsContactPerson != null && !"".equals(lsContactPerson)){
                                 poJSON = loPayee.getModel().openRecordByReference(lsContactPerson);
                             } else {
@@ -6771,11 +6781,27 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                         System.out.println("Account:" + xlist1.getAccount() );
                         System.out.println("Debit:" + xlist1.getDebit());
                         System.out.println("Credit:" + xlist1.getCredit());
-                        poJournal.Detail(poJournal.getDetailCount()-1).setForMonthOf(poGRider.getServerDate());
-                        poJournal.Detail(poJournal.getDetailCount()-1).setAccountCode(xlist1.getAccount());
-                        poJournal.Detail(poJournal.getDetailCount()-1).setCreditAmount(xlist1.getCredit());
-                        poJournal.Detail(poJournal.getDetailCount()-1).setDebitAmount(xlist1.getDebit());
-                        poJournal.AddDetail();
+                        //Find existing account code add the value for debit / credit on the the same existing account code
+                        boolean lbExist = false;
+                        int lnCtr = 0;
+                        for(lnCtr = 0; lnCtr < poJournal.getDetailCount(); lnCtr++){
+                            if(xlist1.getAccount().equals(poJournal.Detail(lnCtr).getAccountCode())){
+                                lbExist = true;
+                                break;
+                            }
+                        }
+                        
+                        if(lbExist){ 
+                            //Add TBJ Credit / Debit amount on existing journal detail with the same account code
+                            poJournal.Detail(lnCtr).setCreditAmount(poJournal.Detail(lnCtr).getCreditAmount() + xlist1.getCredit());
+                            poJournal.Detail(lnCtr).setDebitAmount(poJournal.Detail(lnCtr).getDebitAmount() + xlist1.getDebit());
+                        } else {
+                            poJournal.Detail(poJournal.getDetailCount()-1).setForMonthOf(poGRider.getServerDate());
+                            poJournal.Detail(poJournal.getDetailCount()-1).setAccountCode(xlist1.getAccount());
+                            poJournal.Detail(poJournal.getDetailCount()-1).setCreditAmount(xlist1.getCredit());
+                            poJournal.Detail(poJournal.getDetailCount()-1).setDebitAmount(xlist1.getDebit());
+                            poJournal.AddDetail();
+                        }
                     }
                 } else {
                     System.out.println(jsonmaster.toJSONString());
