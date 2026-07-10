@@ -183,7 +183,7 @@ public class AccountChart extends Parameter {
     public JSONObject searchRecord(String value, boolean byCode) throws SQLException, GuanzonException {
         String lsSQL = getSQ_Browse();
 
-        poJSON = ShowDialogFX.Search(poGRider,
+        poJSON = ShowDialogFX.Browse(poGRider,
                 lsSQL,
                 value,
                 "ID»Description»Account»Industry",
@@ -192,7 +192,7 @@ public class AccountChart extends Parameter {
                 byCode ? 0 : 1);
 
         if (poJSON != null) {
-            return poModel.openRecord((String) poJSON.get("sAcctCode"));
+            return poModel.openRecord((String) poJSON.get("sAcctCode"),(String) poJSON.get("sParentCd"),(String) poJSON.get("sIndstCde"));
         } else {
             poJSON = new JSONObject();
             poJSON.put("result", "error");
@@ -310,13 +310,13 @@ public class AccountChart extends Parameter {
      */
     public JSONObject searchRecordParent(String value, boolean byCode) throws SQLException, GuanzonException {
         String lsSQL = getSQ_Browse();
-//        List<String> lsFilter = new ArrayList<>();
+        List<String> lsFilter = new ArrayList<>();
 //
-//        lsFilter.add("  a.cRecdStat = '1'");
-//        if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
-//            lsSQL += " WHERE " + String.join(" AND ", lsFilter);
-//        }
-//        System.out.println("SearchParent : " + lsSQL ) ;
+        lsFilter.add(" (a.sParentCd = '' OR a.sParentCd IS NULL) ");
+        if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
+            lsSQL += " WHERE " + String.join(" AND ", lsFilter);
+        }
+        System.out.println("SearchParent : " + lsSQL ) ;
 
         poJSON = ShowDialogFX.Search(poGRider,
                 lsSQL,
@@ -421,6 +421,8 @@ public class AccountChart extends Parameter {
         String lsSQL = "SELECT"
                 + "  a.sAcctCode"
                 + ", a.sDescript"
+                + ", a.sParentCd"
+                + ", a.sIndstCde"
                 + ", IFNULL(a.sGLCodexx,'') sGLCodexx"
                 + ", a.cRecdStat"
                 + ", IFNULL(b.sDescript, '') xIndustry"
@@ -488,6 +490,11 @@ public class AccountChart extends Parameter {
         poJSON = object.searchRecordParent(value, byCode);
 
         if ("success".equals((String) poJSON.get("result"))) {
+            if(poModel.getAccountCode().equals(object.getModel().getAccountCode())){
+                poJSON.put("result", "error");
+                poJSON.put("message", "Parent account cannot be the same as the current account.");
+                return poJSON;
+            }
            poModel.setParentAccountCode(object.getModel().getAccountCode());
         }
         return poJSON;
