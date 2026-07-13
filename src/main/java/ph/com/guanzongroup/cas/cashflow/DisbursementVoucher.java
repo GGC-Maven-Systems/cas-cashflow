@@ -18,14 +18,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -9714,15 +9707,27 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
             }
 
 
-            if (CheckStat.length() > 1) {
-                for (int lnCtr = 0; lnCtr <= CheckStat.length() - 1; lnCtr++) {
-                    lsTransStat += ", " + SQLUtil.toSQL(Character.toString(CheckStat.charAt(lnCtr)));
-                }
-                lsFilter.add( " b.cTranStat IN (" + lsTransStat.substring(2) + ")");
-            } else {
-                lsFilter.add( " b.cTranStat = " + SQLUtil.toSQL(CheckStat));
-            }
+            if (CheckStat != null && !CheckStat.trim().isEmpty()) {
 
+                if (CheckStat.length() > 1) {
+
+                    StringJoiner joiner = new StringJoiner(", ");
+
+                    for (int i = 0; i < CheckStat.length(); i++) {
+                        joiner.add(SQLUtil.toSQL(String.valueOf(CheckStat.charAt(i))));
+                    }
+
+                    lsFilter.add("b.cTranStat IN (" + joiner.toString() + ")");
+
+                } else {
+
+                    lsFilter.add("b.cTranStat = " + SQLUtil.toSQL(CheckStat));
+
+                }
+            }
+//            if (CheckStat != null && !CheckStat.trim().isEmpty()) {
+//                lsFilter.add("e.cTranStat LIKE " + SQLUtil.toSQL(CheckStat + "%"));
+//            }
             lsFilter.add("a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID())
                     + " AND a.sIndstCdx = " +  SQLUtil.toSQL(Master().getIndustryID()));
             if(poGRider.getUserLevel()<=UserRight.ENCODER){
@@ -9970,7 +9975,22 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 lsFilter.add("g.sBankName LIKE " + SQLUtil.toSQL(BankName + "%"));
             }
             if (CheckStat != null && !CheckStat.trim().isEmpty()) {
-                lsFilter.add("e.cTranStat LIKE " + SQLUtil.toSQL(CheckStat + "%"));
+
+                if (CheckStat.length() > 1) {
+
+                    StringJoiner joiner = new StringJoiner(", ");
+
+                    for (int i = 0; i < CheckStat.length(); i++) {
+                        joiner.add(SQLUtil.toSQL(String.valueOf(CheckStat.charAt(i))));
+                    }
+
+                    lsFilter.add("b.cTranStat IN (" + joiner.toString() + ")");
+
+                } else {
+
+                    lsFilter.add("b.cTranStat = " + SQLUtil.toSQL(CheckStat));
+
+                }
             }
 
             lsFilter.add("a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID())

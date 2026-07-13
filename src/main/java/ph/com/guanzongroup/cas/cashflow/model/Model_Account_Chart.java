@@ -663,11 +663,14 @@ public class Model_Account_Chart extends Model {
             oldID5 = getValue(ID5);
         }
     }
-    @Override
-    public JSONObject openRecord(String id) throws SQLException, GuanzonException {
+
+    public JSONObject openRecord(String id,String id1,String id2) throws SQLException, GuanzonException {
         this.poJSON = new JSONObject();
         String lsSQL = MiscUtil.makeSelect(this);
-        lsSQL = MiscUtil.addCondition(lsSQL, this.ID + " = " + SQLUtil.toSQL(id));
+        lsSQL = MiscUtil.addCondition(lsSQL,
+                this.ID + " = " + SQLUtil.toSQL(id)
+                        + " AND " + this.ID2 + " = " + SQLUtil.toSQL(id1)
+                        + " AND " + this.ID3 + " = " + SQLUtil.toSQL(id2));
         ResultSet loRS = this.poGRider.executeQuery(lsSQL);
 
         try {
