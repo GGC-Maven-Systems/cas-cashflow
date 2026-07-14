@@ -41,7 +41,7 @@ public class Model_Payment_Request_Master extends Model {
     Model_Company poCompany;
     Model_Recurring_Expense_Payment_Monitor poRecurringExpense;
     Model_PO_Master poPOMaster;
-
+    private boolean isSummarized;
     @Override
     public void initialize() {
         try {
@@ -297,6 +297,10 @@ public class Model_Payment_Request_Master extends Model {
 
     public Date getModifiedDate() {
         return (Date) getValue("dModified");
+    }
+
+    public void setSummarized(boolean summarized) {
+        this.isSummarized = summarized;
     }
 
     @Override
