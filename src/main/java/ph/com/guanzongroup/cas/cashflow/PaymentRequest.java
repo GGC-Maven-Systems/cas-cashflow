@@ -10,16 +10,16 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.rowset.CachedRowSet;
+
+import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.codec.binary.Base64;
 import org.guanzon.appdriver.agent.ShowDialogFX;
 import org.guanzon.appdriver.agent.services.Model;
@@ -40,12 +40,17 @@ import org.guanzon.appdriver.constant.RecordStatus;
 import org.guanzon.appdriver.constant.UserRight;
 import org.guanzon.appdriver.iface.GValidator;
 import org.guanzon.appdriver.token.RequestAccess;
+import org.guanzon.cas.client.services.ClientControllers;
 import org.guanzon.cas.inv.InvTransCons;
+import org.guanzon.cas.parameter.Branch;
+import org.guanzon.cas.parameter.Category;
 import org.guanzon.cas.parameter.Department;
 import org.guanzon.cas.parameter.services.ParamControllers;
+import org.guanzon.cas.purchasing.controller.PurchaseOrderReceiving;
 import org.guanzon.cas.purchasing.model.Model_PO_Master;
 import org.guanzon.cas.purchasing.services.PurchaseOrderModels;
 import org.guanzon.cas.purchasing.status.PurchaseOrderStatus;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -59,11 +64,15 @@ import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStaticData;
 import static ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStaticData.recurring_expense_payment;
 import ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStatus;
+import ph.com.guanzongroup.cas.cashflow.utility.CustomJasperViewerReports;
 import ph.com.guanzongroup.cas.cashflow.validator.PaymentRequestValidator;
 
 public class PaymentRequest extends Transaction {
     private String psIndustryId = "";
     private String psCompanyId = "";
+
+    private String dfrom;
+    private String dthru;
     
     List<TransactionAttachment> paAttachments;
     List<Model_PO_Master> paPOMaster;
@@ -2603,4 +2612,1135 @@ public class PaymentRequest extends Transaction {
         return lsEntry;
     }
 
+    /**
+     * Searches for an active requesting branch.
+     *
+     * <p>This method searches the Branch parameter table using either the branch
+     * code or branch name. If a matching active branch is found, the branch
+     * description and branch code are returned in the resulting JSON object.</p>
+     *
+     * @param value the branch code or branch name to search for
+     * @param byCode {@code true} to search by branch code;
+     *               {@code false} to search by branch name
+     * @return a {@code JSONObject} containing the search result, requesting branch
+     *         name, and requesting branch code when successful
+     * @throws ExceptionInInitializerError if controller initialization fails
+     * @throws SQLException if a database access error occurs
+     * @throws GuanzonException if business validation fails
+     *
+     * @author TEEJEI DE CELIS
+     * @since 07-14-2026
+     * @apiNote Used by the Payment Request reporting module.
+     */
+    public JSONObject SearchReqBranch(String value, boolean byCode) throws ExceptionInInitializerError, SQLException, GuanzonException {
+        Branch object = new ParamControllers(poGRider, logwrapr).Branch();
+        object.setRecordStatus(RecordStatus.ACTIVE);
+
+        poJSON = object.searchRecord(value, byCode);
+        if (!"error".equals((String) poJSON.get("result"))) {
+            poJSON.put("reqbranch",object.getModel().getBranchName());
+            poJSON.put("reqbranchID",object.getModel().getBranchCode());
+            poJSON.put("result", "success");
+        }
+
+        return poJSON;
+    }
+    /**
+     * Searches for an active expense branch.
+     *
+     * <p>This method searches the Branch parameter table using either the branch
+     * code or branch name. If a matching active branch is found, the branch
+     * description and branch code are returned in the resulting JSON object.</p>
+     *
+     * @param value the branch code or branch name to search for
+     * @param byCode {@code true} to search by branch code;
+     *               {@code false} to search by branch name
+     * @return a {@code JSONObject} containing the search result, expense branch
+     *         name, and expense branch code when successful
+     * @throws ExceptionInInitializerError if controller initialization fails
+     * @throws SQLException if a database access error occurs
+     * @throws GuanzonException if business validation fails
+     *
+     * @author TEEJEI DE CELIS
+     * @since 07-14-2026
+     * @apiNote Used by the Payment Request reporting module.
+     */
+    public JSONObject SearchExpBranch(String value, boolean byCode) throws ExceptionInInitializerError, SQLException, GuanzonException {
+        Branch object = new ParamControllers(poGRider, logwrapr).Branch();
+        object.setRecordStatus(RecordStatus.ACTIVE);
+
+        poJSON = object.searchRecord(value, byCode);
+        if (!"error".equals((String) poJSON.get("result"))) {
+            poJSON.put("expbranch",object.getModel().getBranchName());
+            poJSON.put("expbranchID",object.getModel().getBranchCode());
+            poJSON.put("result", "success");
+        }
+
+        return poJSON;
+    }
+    /**
+     * Searches for an active department.
+     *
+     * <p>This method searches the Department parameter table using either the
+     * department ID or department name. If a matching active department is found,
+     * the department description and department ID are returned in the resulting
+     * JSON object.</p>
+     *
+     * @param value the department ID or department name to search for
+     * @param byCode {@code true} to search by department ID;
+     *               {@code false} to search by department name
+     * @return a {@code JSONObject} containing the search result, department name,
+     *         and department ID when successful
+     * @throws ExceptionInInitializerError if controller initialization fails
+     * @throws SQLException if a database access error occurs
+     * @throws GuanzonException if business validation fails
+     *
+     * @author TEEJEI DE CELIS
+     * @since 07-14-2026
+     * @apiNote Used by the Payment Request reporting module.
+     */
+    public JSONObject SearchDepartmentReport(String value, boolean byCode) throws ExceptionInInitializerError, SQLException, GuanzonException {
+        Department object = new ParamControllers(poGRider, logwrapr).Department();
+        object.setRecordStatus(RecordStatus.ACTIVE);
+
+        poJSON = object.searchRecord(value, byCode);
+        if (!"error".equals((String) poJSON.get("result"))) {
+            poJSON.put("department",object.getModel().getDescription());
+            poJSON.put("departmentID",object.getModel().getDepartmentId());
+            poJSON.put("result", "success");
+        }
+
+        return poJSON;
+    }
+    /**
+     * Searches for an active payee.
+     *
+     * <p>This method searches the Payee master table using either the payee ID or
+     * payee name. If a matching active payee is found, the payee name and payee ID
+     * are returned in the resulting JSON object.</p>
+     *
+     * @param value the payee ID or payee name to search for
+     * @param byCode {@code true} to search by payee ID;
+     *               {@code false} to search by payee name
+     * @return a {@code JSONObject} containing the search result, payee name,
+     *         and payee ID when successful
+     * @throws ExceptionInInitializerError if controller initialization fails
+     * @throws SQLException if a database access error occurs
+     * @throws GuanzonException if business validation fails
+     *
+     * @author TEEJEI DE CELIS
+     * @since 07-14-2026
+     * @apiNote Used by the Payment Request reporting module.
+     */
+    public JSONObject SearchPayeeReport(String value, boolean byCode) throws ExceptionInInitializerError, SQLException, GuanzonException {
+        Payee object = new ClientControllers(poGRider, logwrapr).Payee();
+        object.setRecordStatus(RecordStatus.ACTIVE);
+
+        poJSON = object.searchRecord(value, byCode);
+        if ("error".equals((String) poJSON.get("result"))) {
+            poJSON.put("payee",object.getModel().getPayeeName());
+            poJSON.put("payeeID",object.getModel().getPayeeID());
+            poJSON.put("result", "success");
+        }
+
+        return poJSON;
+    }
+
+    /**
+     * Retrieves Payment Request summary records based on the specified filter criteria.
+     *
+     * <p>This method generates a summarized list of Payment Request transactions by
+     * joining payment request, payee, client, department, and branch information.
+     * The result is intended for reporting purposes and supports filtering by
+     * transaction date, requesting branch, expense branch, department, payee,
+     * transaction status, and the current system industry.</p>
+     *
+     * <p>Additional system-level restrictions are automatically applied:</p>
+     * <ul>
+     *   <li>Industry code of the logged-in company</li>
+     *   <li>Branch-based transaction restriction for users with Encoder access or lower</li>
+     *   <li>Single or multiple transaction status filtering</li>
+     * </ul>
+     *
+     * <p><b>Supported Filters:</b></p>
+     * <ul>
+     *   <li>Transaction date range (dTransact BETWEEN dateFrom AND dateThru)</li>
+     *   <li>Requesting branch</li>
+     *   <li>Expense branch</li>
+     *   <li>Department</li>
+     *   <li>Payee</li>
+     *   <li>Transaction status</li>
+     * </ul>
+     *
+     * <p><b>Returned Fields:</b></p>
+     * <ul>
+     *   <li>sTransNox - Payment Request transaction number</li>
+     *   <li>dTransact - Transaction date</li>
+     *   <li>req_branch - Requesting branch name</li>
+     *   <li>expense_branch - Expense branch name</li>
+     *   <li>sDeptName - Department name</li>
+     *   <li>sPayeeNme - Payee name</li>
+     *   <li>sSeriesNo - Series number</li>
+     *   <li>sSourceCd - Source document code</li>
+     *   <li>sSourceNo - Source document number</li>
+     *   <li>nDiscAmtx - Discount amount</li>
+     *   <li>nTaxAmntx - Tax amount</li>
+     *   <li>nNetTotal - Net total amount</li>
+     *   <li>nAmtPaidx - Amount paid</li>
+     *   <li>nTranTotl - Transaction total amount</li>
+     *   <li>cTranStat - Transaction status description</li>
+     * </ul>
+     *
+     * @param issummarized reserved for future use to indicate summarized or detailed report generation
+     * @param dateFrom starting transaction date (inclusive)
+     * @param dateThru ending transaction date (inclusive)
+     * @param RequestBranch requesting branch code filter; {@code null} or empty to include all branches
+     * @param ExpenseBranch expense branch code filter; {@code null} or empty to include all branches
+     * @param Department department ID filter; {@code null} or empty to include all departments
+     * @param Payee payee ID filter; {@code null} or empty to include all payees
+     *
+     * @return a {@code JSONObject} containing:
+     * <ul>
+     *   <li><b>result</b> - "success" or "error"</li>
+     *   <li><b>message</b> - execution result message</li>
+     *   <li><b>data</b> - {@code JSONArray} containing the summary records</li>
+     * </ul>
+     *
+     * @throws SQLException if a database access error occurs
+     * @throws GuanzonException if a business validation error occurs
+     *
+     * @implNote
+     * Transaction status values are converted into their corresponding descriptive
+     * labels using {@link PaymentRequestStatus} constants before being included in
+     * the returned JSON data.
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     * @apiNote Part of the Payment Request reporting module.
+     */
+    public JSONObject RetriveSummaryReports(Boolean issummarized,
+                                            LocalDate dateFrom,
+                                            LocalDate dateThru,
+                                            String RequestBranch,
+                                            String ExpenseBranch,
+                                            String Department,
+                                            String Payee)
+            throws SQLException, GuanzonException {
+
+        poJSON = new JSONObject();
+        String lsTransStat = "";
+        dfrom = String.valueOf(dateFrom);
+        dthru = String.valueOf(dateThru);
+        try {
+
+            String lsSQL = "SELECT DISTINCT "
+                    + "  a.sTransNox, "
+                    + "  a.sIndstCdx, "
+                    + "  a.sCompnyID, "
+                    + "  a.dTransact, "
+                    + "  a.sBranchCd, "
+                    + "  a.sDeptIDxx, "
+                    + "  a.sPayeeIDx, "
+                    + "  a.sSeriesNo, "
+                    + "  a.nTranTotl, "
+                    + "  a.sRemarksx, "
+                    + "  a.nDiscAmtx, "
+                    + "  a.nTaxAmntx, "
+                    + "  a.nNetTotal, "
+                    + "  a.nAmtPaidx, "
+                    + "  a.sSourceCd, "
+                    + "  a.sSourceNo, "
+                    + "  a.cWithSOAx, "
+                    + "  a.cProcessd, "
+                    + "  a.cTranStat, "
+                    + "  b.sPayeeNme, "
+                    + "  b.sClientID, "
+                    + "  c.sCompnyNm, "
+                    + "  d.sDeptIDxx, "
+                    + "  d.sDeptName, "
+                    + "  e.sBranchCd, "
+                    + "  e.sBranchNm AS expense_branch, "
+                    + "  f.sBranchCd, "
+                    + "  f.sBranchNm AS req_branch "
+                    + "FROM Payment_Request_Master a "
+                    + "LEFT JOIN Payee b "
+                    + "  ON a.sPayeeIDx = b.sPayeeIDx "
+                    + "LEFT JOIN Client_Master c "
+                    + "  ON b.sClientID = c.sClientID "
+                    + "LEFT JOIN Department d "
+                    + "  ON a.sDeptIDxx = d.sDeptIDxx "
+                    + "LEFT JOIN Branch e "
+                    + "  ON a.sBranchCd = e.sBranchCd "
+                    + "LEFT JOIN Branch f "
+                    + "  ON LEFT(a.sTransNox, 4) = f.sBranchCd ";
+            // -------------------------------
+            // FILTERS
+            // -------------------------------
+            List<String> lsFilter = new ArrayList<>();
+
+            if (dateFrom != null && dateThru != null) {
+                lsFilter.add("a.dTransact BETWEEN "
+                        + SQLUtil.toSQL(java.sql.Date.valueOf(dateFrom))
+                        + " AND "
+                        + SQLUtil.toSQL(java.sql.Date.valueOf(dateThru)));
+                dfrom = String.valueOf(dateFrom);
+                dthru = String.valueOf(dateThru);
+            }
+            if (RequestBranch != null && !RequestBranch.trim().isEmpty()) {
+                lsFilter.add("e.sBranchCd = " + SQLUtil.toSQL(RequestBranch));
+            }
+            if (ExpenseBranch != null && !ExpenseBranch.trim().isEmpty()) {
+                lsFilter.add("f.sBranchCd = " + SQLUtil.toSQL(ExpenseBranch));
+            }
+
+            if (Department != null && !Department.trim().isEmpty()) {
+                lsFilter.add("d.sDeptIDxx = " + SQLUtil.toSQL(Department));
+            }
+
+            if (Payee != null && !Payee.trim().isEmpty()) {
+                lsFilter.add("b.sPayeeIDx = " + SQLUtil.toSQL(Payee));
+            }
+            lsFilter.add(" a.sIndstCdx = " +  SQLUtil.toSQL(Master().getIndustryID()));
+
+            if(poGRider.getUserLevel()<=UserRight.ENCODER){
+                lsFilter.add("a.sTransNox LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%"));
+            }
+            if (psTranStat.length() > 1) {
+                for (int lnCtr = 0; lnCtr <= psTranStat.length() - 1; lnCtr++) {
+                    lsTransStat += ", " + SQLUtil.toSQL(Character.toString(psTranStat.charAt(lnCtr)));
+                }
+                lsFilter.add( " a.cTranStat IN (" + lsTransStat.substring(2) + ")");
+            } else {
+                lsFilter.add( " a.cTranStat = " + SQLUtil.toSQL(psTranStat));
+            }
+            if (!lsFilter.isEmpty()) {
+                lsSQL += " WHERE " + String.join(" AND ", lsFilter);
+            }
+
+            lsSQL += " ORDER BY a.dTransact,a.sTransNox ASC";
+
+            System.out.println("Executing SQL: " + lsSQL);
+
+            ResultSet loRS = poGRider.executeQuery(lsSQL);
+            System.out.println("ResultSet = " + loRS);
+
+            if (loRS != null) {
+                System.out.println("isBeforeFirst = " + loRS.isBeforeFirst());
+            }
+
+            if (loRS == null) {
+                poJSON.put("result", "error");
+                poJSON.put("message", "Query execution failed.");
+                return poJSON;
+            }
+
+            int lnctr = 0;
+            JSONArray dataArray = new JSONArray();
+
+            while (loRS.next()) {
+
+                JSONObject record = new JSONObject();
+
+                record.put("sTransNox", getString(loRS, "sTransNox"));
+                record.put("dTransact", getDate(loRS, "dTransact"));
+                record.put("req_branch", getString(loRS, "req_branch"));
+                record.put("expense_branch", getString(loRS, "expense_branch"));
+                record.put("sDeptName", getString(loRS, "sDeptName"));
+                record.put("sPayeeNme", getString(loRS, "sPayeeNme"));
+                record.put("sSeriesNo", getString(loRS, "sSeriesNo"));
+                record.put("sSourceCd", getString(loRS, "sSourceCd"));
+                record.put("sSourceNo", getString(loRS, "sSourceNo"));
+                record.put("nDiscAmtx", getString(loRS, "nDiscAmtx"));
+                record.put("nTaxAmntx", getString(loRS, "nTaxAmntx"));
+                record.put("nNetTotal", getString(loRS, "nNetTotal"));
+                record.put("nAmtPaidx", getString(loRS, "nAmtPaidx"));
+                record.put("nTranTotl", getString(loRS, "nTranTotl"));
+
+                String tranStat = loRS.getString("cTranStat");
+
+                switch (tranStat) {
+                    case PaymentRequestStatus.OPEN:
+                        record.put("cTranStat", "OPEN");
+                        break;
+                    case PaymentRequestStatus.CONFIRMED:
+                        record.put("cTranStat", "CONFIRMED");
+                        break;
+                    case PaymentRequestStatus.PAID:
+                        record.put("cTranStat", "PAID");
+                        break;
+                    case PaymentRequestStatus.CANCELLED:
+                        record.put("cTranStat", "CANCELLED");
+                        break;
+                    case PaymentRequestStatus.VOID:
+                        record.put("cTranStat", "VOID");
+                        break;
+                    case PaymentRequestStatus.POSTED:
+                        record.put("cTranStat", "POSTED");
+                        break;
+                    case PaymentRequestStatus.RETURNED:
+                        record.put("cTranStat", "RETURNED");
+                        break;
+                    default:
+                        record.put("cTranStat", tranStat);
+                        break;
+
+                }
+                dataArray.add(record);
+                lnctr++;
+            }
+
+            MiscUtil.close(loRS);
+
+            if (lnctr > 0) {
+                poJSON.put("result", "success");
+                poJSON.put("message", "Record(s) loaded successfully.");
+                poJSON.put("data", dataArray);
+            } else {
+                poJSON.put("result", "error");
+                poJSON.put("message", "No records found.");
+                poJSON.put("data", new JSONArray());
+            }
+
+        } catch (SQLException e) {
+            poJSON.put("result", "error");
+            poJSON.put("message", e.getMessage());
+        }
+
+        return poJSON;
+    }
+    /**
+     * Retrieves detailed Payment Request records based on the specified filter criteria.
+     *
+     * <p>This method generates a detailed Payment Request report by retrieving
+     * item-level transaction entries from the payment request detail table together
+     * with related information from the payment request master, payee, department,
+     * branch, recurring expense, and particular reference tables.</p>
+     *
+     * <p>The returned dataset provides a detailed breakdown of each payment request
+     * entry, making it suitable for auditing, reconciliation, and financial
+     * reporting.</p>
+     *
+     * <p>Additional system-level restrictions are automatically applied:</p>
+     * <ul>
+     *   <li>Industry code of the logged-in company</li>
+     *   <li>Branch-based transaction restriction for users with Encoder access or lower</li>
+     *   <li>Single or multiple transaction status filtering</li>
+     * </ul>
+     *
+     * <p><b>Supported Filters:</b></p>
+     * <ul>
+     *   <li>Transaction date range (dTransact BETWEEN dateFrom AND dateThru)</li>
+     *   <li>Requesting branch</li>
+     *   <li>Expense branch</li>
+     *   <li>Department</li>
+     *   <li>Payee</li>
+     *   <li>Transaction status</li>
+     * </ul>
+     *
+     * <p><b>Returned Fields:</b></p>
+     * <ul>
+     *   <li>sTransNox - Payment Request transaction number</li>
+     *   <li>dTransact - Transaction date</li>
+     *   <li>req_branch - Requesting branch name</li>
+     *   <li>expense_branch - Expense branch name</li>
+     *   <li>sDeptName - Department name</li>
+     *   <li>sPayeeNme - Payee name</li>
+     *   <li>particular_name - Expense particular description</li>
+     *   <li>recurring_name - Recurring expense description</li>
+     *   <li>sPRFRemxx - Particular remarks</li>
+     *   <li>nAmountxx - Amount</li>
+     *   <li>nDiscount - Discount amount</li>
+     *   <li>nAddDiscx - Additional discount amount</li>
+     *   <li>cVATaxabl - VAT applicability flag</li>
+     *   <li>nTWithHld - Tax withheld amount</li>
+     *   <li>cTranStat - Transaction status description</li>
+     * </ul>
+     *
+     * @param issummarized reserved for future use to indicate summarized or detailed report generation
+     * @param dateFrom starting transaction date (inclusive)
+     * @param dateThru ending transaction date (inclusive)
+     * @param RequestBranch requesting branch code filter; {@code null} or empty to include all branches
+     * @param ExpenseBranch expense branch code filter; {@code null} or empty to include all branches
+     * @param Department department ID filter; {@code null} or empty to include all departments
+     * @param Payee payee ID filter; {@code null} or empty to include all payees
+     *
+     * @return a {@code JSONObject} containing:
+     * <ul>
+     *   <li><b>result</b> - "success" or "error"</li>
+     *   <li><b>message</b> - execution result message</li>
+     *   <li><b>data</b> - {@code JSONArray} containing the detailed Payment Request records</li>
+     * </ul>
+     *
+     * @throws SQLException if a database access error occurs
+     * @throws GuanzonException if a business validation error occurs
+     *
+     * @implNote
+     * Transaction status values are converted into their corresponding descriptive
+     * labels using {@link PaymentRequestStatus} constants before being included in
+     * the returned JSON data.
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     * @apiNote Part of the Payment Request reporting module and intended for
+     * detailed transaction reporting, reconciliation, and auditing.
+     */
+    public JSONObject RetriveSummaryDetailedReports(Boolean issummarized,
+                                                    LocalDate dateFrom,
+                                                    LocalDate dateThru,
+                                                    String RequestBranch,
+                                                    String ExpenseBranch,
+                                                    String Department,
+                                                    String Payee)
+            throws SQLException, GuanzonException {
+        poJSON = new JSONObject();
+        String lsTransStat = "";
+        try {
+
+            String lsSQL = "SELECT DISTINCT "
+                    + "  a.sTransNox, "
+                    + "  a.nEntryNox, "
+                    + "  b.sIndstCdx, "
+                    + "  b.sCompnyID, "
+                    + "  b.dTransact, "
+                    + "  a.sPrtclrID, "
+                    + "  c.sDescript AS particular_name, "
+                    + "  k.sDescript AS recurring_name, "
+                    + "  a.sRecurrNo, "
+                    + "  a.sPRFRemxx, "
+                    + "  a.nAmountxx, "
+                    + "  a.nDiscount, "
+                    + "  a.nAddDiscx, "
+                    + "  a.cVATaxabl, "
+                    + "  a.nTWithHld, "
+                    + "  a.cReversex, "
+                    + "  e.sDeptIDxx, "
+                    + "  e.sDeptName, "
+                    + "  d.sPayeeNme, "
+                    + "  b.cTranStat, "
+                    + "  l.sBranchCd, "
+                    + "  l.sBranchNm AS req_branch, "
+                    + "  f.sBranchCd, "
+                    + "  f.sBranchNm AS expense_branch "
+                    + "FROM Payment_Request_Detail a "
+                    + "LEFT JOIN Payment_Request_Master b "
+                    + "  ON a.sTransNox = b.sTransNox "
+                    + "LEFT JOIN Particular c "
+                    + "  ON a.sPrtclrID = c.sPrtclrID "
+                    + "LEFT JOIN Payee d "
+                    + "  ON b.sPayeeIDx = d.sPayeeIDx "
+                    + "LEFT JOIN Department e "
+                    + "  ON b.sDeptIDxx = e.sDeptIDxx "
+                    + "LEFT JOIN Branch f "
+                    + "  ON b.sBranchCd = f.sBranchCd "
+                    + "LEFT JOIN Recurring_Expense g "
+                    + "  ON a.sRecurrNo = g.sRecurrID "
+                    + "LEFT JOIN Particular k "
+                    + "  ON g.sPrtclrID = k.sPrtclrID "
+                    + "LEFT JOIN Branch l "
+                    + "  ON LEFT(b.sTransNox, 4) = l.sBranchCd ";
+
+
+            List<String> lsFilter = new ArrayList<>();
+
+            if (dateFrom != null && dateThru != null) {
+                lsFilter.add("b.dTransact BETWEEN "
+                        + SQLUtil.toSQL(java.sql.Date.valueOf(dateFrom))
+                        + " AND "
+                        + SQLUtil.toSQL(java.sql.Date.valueOf(dateThru)));
+                dfrom = String.valueOf(dateFrom);
+                dthru = String.valueOf(dateThru);
+            }
+            if (RequestBranch != null && !RequestBranch.trim().isEmpty()) {
+                lsFilter.add("l.sBranchCd = " + SQLUtil.toSQL(RequestBranch));
+            }
+            if (ExpenseBranch != null && !ExpenseBranch.trim().isEmpty()) {
+                lsFilter.add("f.sBranchCd = " + SQLUtil.toSQL(ExpenseBranch));
+            }
+
+            if (Department != null && !Department.trim().isEmpty()) {
+                lsFilter.add("e.sDeptIDxx = " + SQLUtil.toSQL(Department));
+            }
+
+            if (Payee != null && !Payee.trim().isEmpty()) {
+                lsFilter.add("d.sPayeeIDx = " + SQLUtil.toSQL(Payee));
+            }
+            lsFilter.add(" b.sIndstCdx = " +  SQLUtil.toSQL(Master().getIndustryID()));
+
+            if(poGRider.getUserLevel()<=UserRight.ENCODER){
+                lsFilter.add("a.sTransNox LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%"));
+            }
+
+            if (psTranStat.length() > 1) {
+                for (int lnCtr = 0; lnCtr <= psTranStat.length() - 1; lnCtr++) {
+                    lsTransStat += ", " + SQLUtil.toSQL(Character.toString(psTranStat.charAt(lnCtr)));
+                }
+                lsFilter.add( " b.cTranStat IN (" + lsTransStat.substring(2) + ")");
+            } else {
+                lsFilter.add( " b.cTranStat = " + SQLUtil.toSQL(psTranStat));
+            }
+
+            if (!lsFilter.isEmpty()) {
+                lsSQL += " WHERE " + String.join(" AND ", lsFilter);
+            }
+
+            lsSQL += " ORDER BY b.dTransact, a.sTransNox, a.nEntryNox ASC";
+
+            System.out.println("Executing SQL: " + lsSQL);
+
+            ResultSet loRS = poGRider.executeQuery(lsSQL);
+
+            if (loRS == null) {
+                poJSON.put("result", "error");
+                poJSON.put("message", "Query execution failed.");
+                return poJSON;
+            }
+
+            int lnctr = 0;
+            JSONArray dataArray = new JSONArray();
+
+            while (loRS.next()) {
+                JSONObject record = new JSONObject();
+                record.put("sTransNox", getString(loRS, "sTransNox"));
+                record.put("dTransact", getDate(loRS, "dTransact"));
+                record.put("req_branch", getString(loRS, "req_branch"));
+                record.put("expense_branch", getString(loRS, "expense_branch"));
+                record.put("sDeptName", getString(loRS, "sDeptName"));
+                record.put("sPayeeNme", getString(loRS, "sPayeeNme"));
+                record.put("particular_name", getString(loRS, "particular_name"));
+                record.put("recurring_name", getString(loRS, "recurring_name"));
+                record.put("sPRFRemxx", getString(loRS, "sPRFRemxx"));
+                record.put("nTWithHld", getString(loRS, "nTWithHld"));
+                record.put("cVATaxabl", getString(loRS, "cVATaxabl"));
+                record.put("nAddDiscx", getString(loRS, "nAddDiscx"));
+                record.put("nDiscount", getString(loRS, "nDiscount"));
+                record.put("nAmountxx", getString(loRS, "nAmountxx"));
+                String tranStat = loRS.getString("cTranStat");
+
+                switch (tranStat) {
+                    case PaymentRequestStatus.OPEN:
+                        record.put("cTranStat", "OPEN");
+                        break;
+                    case PaymentRequestStatus.CONFIRMED:
+                        record.put("cTranStat", "CONFIRMED");
+                        break;
+                    case PaymentRequestStatus.PAID:
+                        record.put("cTranStat", "PAID");
+                        break;
+                    case PaymentRequestStatus.CANCELLED:
+                        record.put("cTranStat", "CANCELLED");
+                        break;
+                    case PaymentRequestStatus.VOID:
+                        record.put("cTranStat", "VOID");
+                        break;
+                    case PaymentRequestStatus.POSTED:
+                        record.put("cTranStat", "POSTED");
+                        break;
+                    case PaymentRequestStatus.RETURNED:
+                        record.put("cTranStat", "RETURNED");
+                        break;
+                    default:
+                        record.put("cTranStat", tranStat);
+                        break;
+                }
+                dataArray.add(record);
+                lnctr++;
+            }
+
+            MiscUtil.close(loRS);
+
+            if (lnctr > 0) {
+                poJSON.put("result", "success");
+                poJSON.put("message", "Record(s) loaded successfully.");
+                poJSON.put("data", dataArray);
+            } else {
+                poJSON.put("result", "error");
+                poJSON.put("message", "No records found.");
+                poJSON.put("data", new JSONArray());
+            }
+
+        } catch (SQLException e) {
+            poJSON.put("result", "error");
+            poJSON.put("message", e.getMessage());
+        }
+
+        return poJSON;
+    }
+    /**
+     * Safely retrieves a String value from a {@link ResultSet}.
+     *
+     * <p>If the specified column contains a {@code null} or blank value, this
+     * method returns a hyphen ({@code "-"}) as a placeholder to ensure consistent
+     * report output.</p>
+     *
+     * @param rs the {@code ResultSet} containing the query results
+     * @param col the name of the column to retrieve
+     * @return the trimmed column value, or {@code "-"} if the value is null or blank
+     * @throws SQLException if a database access error occurs
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     * @apiNote Used internally when preparing Payment Request report data.
+     */
+    private String getString(ResultSet rs, String col) throws SQLException {
+        String val = rs.getString(col);
+        return (val == null || val.trim().isEmpty()) ? "-" : val;
+    }
+    /**
+     * Safely retrieves a numeric value from a {@link ResultSet}.
+     *
+     * <p>If the specified column contains a SQL {@code NULL}, this method returns
+     * {@code "0.000"}. Otherwise, the value is formatted to three decimal places
+     * for consistent report presentation.</p>
+     *
+     * @param rs the {@code ResultSet} containing the query results
+     * @param col the name of the column to retrieve
+     * @return the formatted numeric value with three decimal places, or
+     *         {@code "0.000"} if the database value is {@code NULL}
+     * @throws SQLException if a database access error occurs
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     * @apiNote Used internally when preparing numeric values for Payment Request reports.
+     */
+    private String getDouble(ResultSet rs, String col) throws SQLException {
+        double val = rs.getDouble(col);
+        if (rs.wasNull()) return "0.000";
+        return String.format("%.3f", val);
+    }
+    /**
+     * Safely retrieves a date value from a {@link ResultSet}.
+     *
+     * <p>If the specified column contains a SQL {@code NULL}, this method returns
+     * an empty string. Otherwise, the date is returned using the default
+     * ISO-8601 format ({@code yyyy-MM-dd}).</p>
+     *
+     * @param rs the {@code ResultSet} containing the query results
+     * @param col the name of the column to retrieve
+     * @return the formatted date string, or an empty string if the value is null
+     * @throws SQLException if a database access error occurs
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     * @apiNote Used internally when preparing Payment Request report data.
+     */
+    private String getDate(ResultSet rs, String col) throws SQLException {
+        java.sql.Date val = rs.getDate(col);
+        return (val == null) ? "" : val.toString();
+    }
+    /**
+     * Converts a date string from ISO format into a human-readable format.
+     *
+     * <p>The input date is expected to be in {@code yyyy-M-d} format and is
+     * converted to {@code MMMM dd, yyyy} (for example, {@code July 15, 2026}).
+     * If the input is {@code null} or empty, an empty string is returned.</p>
+     *
+     * @param dfrom the date string to format
+     * @return the formatted date string, or an empty string if the input is null or empty
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     */
+    public static String formatDateToText(String dfrom) {
+        if (dfrom == null || dfrom.isEmpty()) {
+            return "";
+        }
+        DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-M-d");
+        LocalDate date = LocalDate.parse(dfrom, inputFormatter);
+        DateTimeFormatter outputFormatter= DateTimeFormatter.ofPattern("MMMM dd, yyyy");
+        return date.format(outputFormatter);
+    }
+    private double parseDouble(Object val) {
+        try {
+            return val == null ? 0.0000 : Double.parseDouble(val.toString());
+        } catch (Exception e) {
+            return 0.0000;
+        }
+    }
+    /**
+     * Safely converts an object into its string representation.
+     *
+     * <p>If the supplied value is {@code null}, an empty string is returned.
+     * Otherwise, {@link Object#toString()} is used.</p>
+     *
+     * @param value the value to convert
+     * @return the string representation of the value, or an empty string if null
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     */
+    private String safeStrings(Object value) {
+        return value == null ? "" : value.toString();
+    }
+
+    /**
+     * Generates and displays the Payment Request report using JasperReports.
+     *
+     * <p>This method prepares the report parameters, converts the supplied JSON
+     * data into a collection of {@link Reports} objects, and generates either
+     * a summary or detailed Payment Request report depending on the value of
+     * {@code isSummarized}.</p>
+     *
+     * <p>On Windows platforms, the generated report is displayed using the custom
+     * Jasper viewer. On non-Windows platforms, the report is exported as a PDF
+     * file in the application's temporary directory.</p>
+     *
+     * @param onPrintedCallback callback reserved for post-print processing
+     * @param isSummarized {@code true} to generate the summary report;
+     *                     {@code false} to generate the detailed report
+     * @param reportData the report data represented as a {@code JSONArray}
+     *
+     * @return a {@code JSONObject} containing:
+     * <ul>
+     *   <li><b>result</b> - {@code "success"} or {@code "error"}</li>
+     *   <li><b>message</b> - execution status when an error occurs</li>
+     * </ul>
+     *
+     * @throws JRException internally handled when report compilation or generation fails
+     * @throws SQLException internally handled when database metadata retrieval fails
+     * @throws GuanzonException internally handled when business validation fails
+     *
+     * @implNote
+     * Uses the following JasperReports templates:
+     * <ul>
+     *   <li>{@code PaymentRequestSummary.jrxml}</li>
+     *   <li>{@code PaymentRequestSummaryDetail.jrxml}</li>
+     * </ul>
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     * @apiNote Part of the Payment Request reporting module.
+     */
+    public JSONObject printReports(Runnable onPrintedCallback,Boolean isSummarized, JSONArray reportData) {
+        poJSON = new JSONObject();
+
+        try {
+
+            System.out.println("Company Address : " + Master().Company().getCompanyAddress());
+            System.out.println("Company Town : " + Master().Company().TownCity().getDescription());
+            System.out.println("Company Province " + Master().Company().TownCity().Province().getDescription());
+            System.out.println("Branch Address : " + Master().Branch().getAddress());
+            System.out.println("Branch Town : " + Master().Branch().TownCity().getDescription());
+            System.out.println("Branch Province " + Master().Branch().TownCity().Province().getDescription());
+
+            String lsCompanyAddress = "";
+            if (Master().Company().getCompanyAddress() != null && !"".equals(Master().Company().getCompanyAddress())) {
+                lsCompanyAddress = Master().Company().getCompanyAddress().trim();
+            }
+            if (Master().Company().TownCity().getDescription() != null && !"".equals(Master().Company().TownCity().getDescription())) {
+                lsCompanyAddress = lsCompanyAddress + " " + Master().Company().TownCity().getDescription().trim();
+            }
+            if (Master().Company().TownCity().Province().getDescription() != null && !"".equals(Master().Company().TownCity().Province().getDescription())) {
+                lsCompanyAddress = lsCompanyAddress + ", " + Master().Company().TownCity().Province().getDescription().trim();
+            }
+
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("sLogCompny", poGRider.getCompnyId());
+            parameters.put("sAddressx", lsCompanyAddress);
+
+            parameters.put("sCompany", Master().Company().getCompanyName());
+            parameters.put("sIndustry", Master().Industry().getDescription());
+//            parameters.put("sBranch", Master().Branchx().getBranchName());
+            parameters.put("sDateRange", "FROM " + formatDateToText(dfrom) + " TO " + formatDateToText(dthru));
+
+            List<PaymentRequest.Reports> reportList = new ArrayList<>();
+
+            for (int i = 0; i < reportData.size(); i++) {
+
+                JSONObject obj = (JSONObject) reportData.get(i);
+                if (isSummarized) {
+                    System.out.println("reportData : " + obj);
+                    reportList.add(new PaymentRequest.Reports(
+                            i + 1,
+                            safeStrings(obj.get("sTransNox")),
+                            safeStrings(obj.get("dTransact")),
+                            safeStrings(obj.get("req_branch")),
+                            safeStrings(obj.get("expense_branch")),
+                            safeStrings(obj.get("sDeptName")),
+                            safeStrings(obj.get("sPayeeNme")),
+                            safeStrings(obj.get("sSeriesNo")),
+                            safeStrings(obj.get("sSourceCd")),
+                            safeStrings(obj.get("sSourceNo")),
+                            parseDouble(obj.get("nDiscAmtx")),
+                            parseDouble(obj.get("nTaxAmntx")),
+                            parseDouble(obj.get("nNetTotal")),
+                            parseDouble(obj.get("nAmtPaidx")),
+                            parseDouble(obj.get("nTranTotl")),
+                            safeStrings(obj.get("cTranStat"))
+                    ));
+
+                } else {
+                    System.out.println("reportData : " + obj);
+                    reportList.add(new PaymentRequest.Reports(
+                            i + 1,
+                            safeStrings(obj.get("sTransNox")),
+                            safeStrings(obj.get("dTransact")),
+                            safeStrings(obj.get("req_branch")),
+                            safeStrings(obj.get("expense_branch")),
+                            safeStrings(obj.get("sDeptName")),
+                            safeStrings(obj.get("sPayeeNme")),
+                            safeStrings(obj.get("particular_name")),
+                            safeStrings(obj.get("recurring_name")),
+                            safeStrings(obj.get("sPRFRemxx")),
+                            parseDouble(obj.get("nTWithHld")),
+                            safeStrings(obj.get("cVATaxabl")),
+                            parseDouble(obj.get("nAddDiscx")),
+                            parseDouble(obj.get("nDiscount")),
+                            parseDouble(obj.get("nAmountxx")),
+                            safeStrings(obj.get("cTranStat"))
+                    ));
+                }
+            }
+
+            JRBeanCollectionDataSource dataSource
+                    = new JRBeanCollectionDataSource(reportList);
+
+
+            // 4. Compile and fill report
+            String jrxmlPath;
+
+            if (isSummarized) {
+                jrxmlPath = System.getProperty("sys.default.path.config")
+                        + "/reports/PaymentRequestSummary.jrxml";
+            } else {
+                jrxmlPath = System.getProperty("sys.default.path.config")
+                        + "/reports/PaymentRequestSummaryDetail.jrxml";
+            }
+
+            JasperReport jasperReport;
+
+            jasperReport = JasperCompileManager.compileReport(jrxmlPath);
+
+            JasperPrint jasperPrint;
+            jasperPrint = JasperFillManager.fillReport(
+                    jasperReport,
+                    parameters,
+                    dataSource
+            );
+
+            if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                CustomJasperViewerReports.show(
+                        jasperPrint,
+                        "Payment Request Reports");
+            } else {
+                //mac 2026.02.21
+                //export pdf file
+                JasperExportManager.exportReportToPdfFile(jasperPrint, System.getProperty("sys.default.path.config") + "/temp/" + Master().getTransactionNo() + ".pdf");
+            }
+
+            poJSON.put("result", "success");
+        } catch (JRException | SQLException | GuanzonException ex) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "Transaction print aborted!");
+            Logger
+                    .getLogger(PurchaseOrderReceiving.class
+                            .getName()).log(Level.SEVERE, null, ex);
+        }
+        return poJSON;
+
+    }
+    /**
+     * Represents a Payment Request report record used by the reporting module.
+     *
+     * <p>This class serves as a data transfer object (DTO) for both summary and
+     * detailed Payment Request reports. Depending on the report type, only the
+     * applicable fields are populated.</p>
+     *
+     * <p><b>Summary Report Fields:</b></p>
+     * <ul>
+     *   <li>Transaction information</li>
+     *   <li>Request and expense branches</li>
+     *   <li>Department and payee</li>
+     *   <li>Series and source document information</li>
+     *   <li>Financial totals (discount, tax, net total, amount paid, transaction total)</li>
+     *   <li>Transaction status</li>
+     * </ul>
+     *
+     * <p><b>Detailed Report Fields:</b></p>
+     * <ul>
+     *   <li>Transaction information</li>
+     *   <li>Request and expense branches</li>
+     *   <li>Department and payee</li>
+     *   <li>Expense particular and recurring expense descriptions</li>
+     *   <li>Remarks</li>
+     *   <li>VAT applicability</li>
+     *   <li>Tax withheld, discounts, and amount</li>
+     *   <li>Transaction status</li>
+     * </ul>
+     *
+     * <p>This class is primarily used as the data source for report generation and
+     * presentation layers.</p>
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-07-14
+     * @apiNote Supports both summary and detailed Payment Request reports.
+     */
+    public static class Reports {
+        private Integer nRowNo;
+        private String sTransNox;
+        private String dTransact;
+        private String req_branch;
+        private String expense_branch;
+        private String sDeptName;
+        private String sPayeeNme;
+        private String sSeriesNo;
+        private String sSourceCd;
+        private String sSourceNo;
+        private double nDiscAmtx;
+        private double nTaxAmntx;
+        private double nNetTotal;
+        private double nAmtPaidx;
+        private double nTranTotl;
+        private String particular_name;
+        private String recurring_name;
+        private String sPRFRemxx;
+        private double nTWithHld;
+        private String cVATaxabl;
+        private double nAddDiscx;
+        private double nDiscount;
+        private double nAmountxx;
+        private String cTranStat;
+
+
+        public Reports(Integer nrowNo, String sTransNox, String dTransact, String req_branch, String expense_branch,
+                       String sDeptName, String sPayeeNme, String sSeriesNo, String sSourceCd, String sSourceNo, double nDiscAmtx,
+                       double nTaxAmntx, double nNetTotal, double nAmtPaidx, double nTranTotl, String cTranStat) {
+
+            this.nRowNo = nrowNo;
+            this.sTransNox = sTransNox;
+            this.dTransact = dTransact;
+            this.req_branch = req_branch;
+            this.expense_branch = expense_branch;
+            this.sDeptName = sDeptName;
+            this.sPayeeNme = sPayeeNme;
+            this.sSeriesNo = sSeriesNo;
+            this.sSourceCd = sSourceCd;
+            this.sSourceNo = sSourceNo;
+            this.nDiscAmtx = nDiscAmtx;
+            this.nTaxAmntx = nTaxAmntx;
+            this.nNetTotal = nNetTotal;
+            this.nAmtPaidx = nAmtPaidx;
+            this.nTranTotl = nTranTotl;
+            this.cTranStat = cTranStat;
+        }
+
+        public Reports(Integer nrowNo, String sTransNox, String dTransact, String req_branch,
+                       String expense_branch, String sDeptName, String sPayeeNme, String particular_name,
+                       String recurring_name, String sPRFRemxx, double nTWithHld, String cVATaxabl,
+                       double nAddDiscx, double nDiscount, double nAmountxx, String cTranStat) {
+
+            this.nRowNo = nrowNo;
+            this.sTransNox = sTransNox;
+            this.dTransact = dTransact;
+            this.req_branch = req_branch;
+            this.expense_branch = expense_branch;
+            this.sDeptName = sDeptName;
+            this.sPayeeNme = sPayeeNme;
+            this.particular_name = particular_name;
+            this.recurring_name = recurring_name;
+            this.sPRFRemxx = sPRFRemxx;
+            this.nTWithHld = nTWithHld;
+            this.cVATaxabl = cVATaxabl;
+            this.nAddDiscx = nAddDiscx;
+            this.nDiscount = nDiscount;
+            this.nAmountxx = nAmountxx;
+            this.cTranStat = cTranStat;
+        }
+
+        public Integer getnRowNo() {
+            return nRowNo;
+        }
+
+        public String getsTransNox() {
+            return sTransNox;
+        }
+
+        public String getdTransact() {
+            return dTransact;
+        }
+
+        public String getreq_branch() {
+            return req_branch;
+        }
+
+        public String getexpense_branch() {
+            return expense_branch;
+        }
+
+        public String getsDeptName() {
+            return sDeptName;
+        }
+
+        public String getsPayeeNme() {
+            return sPayeeNme;
+        }
+
+        public String getsSeriesNo() {
+            return sSeriesNo;
+        }
+
+        public String getsSourceCd() {
+            return sSourceCd;
+        }
+
+        public String getsSourceNo() {
+            return sSourceNo;
+        }
+
+        public double getnDiscAmtx() {
+            return nDiscAmtx;
+        }
+
+        public double getnTaxAmntx() {
+            return nTaxAmntx;
+        }
+
+        public double getnNetTotal() {
+            return nNetTotal;
+        }
+
+        public double getnAmtPaidx() {
+            return nAmtPaidx;
+        }
+
+        public double getnTranTotl() {
+            return nTranTotl;
+        }
+
+        public String getparticular_name() {
+            return particular_name;
+        }
+
+        public String getrecurring_name() {
+            return recurring_name;
+        }
+
+        public String getsPRFRemxx() {
+            return sPRFRemxx;
+        }
+
+        public double getnTWithHld() {
+            return nTWithHld;
+        }
+
+        public String getcVATaxabl() {
+            return cVATaxabl;
+        }
+
+        public double getnAddDiscx() {
+            return nAddDiscx;
+        }
+
+        public double getnDiscount() {
+            return nDiscount;
+        }
+
+        public double getnAmountxx() {
+            return nAmountxx;
+        }
+
+        public String getcTranStat() {
+            return cTranStat;
+        }
+
+    }
 }
