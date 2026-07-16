@@ -2794,17 +2794,18 @@ public class DisbursementVoucher extends Transaction {
         double ldblVatSales = Double.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(Master().getVATSale(), false).replace(",", ""));
         double ldblTransTotal = Double.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(Master().getTransactionTotal(), false).replace(",", ""));
         if(ldblVatSales > 0.0000){
-            if(ldblTotalBaseAmount > ldblVatSales){
-                poJSON.put("result", "error");
-                poJSON.put("message", "Tax Base amount cannot be greater than the net vatable sales.");
-                return poJSON;
-            }
-
-            if(ldblTaxAmount > ldblVatSales){
-                poJSON.put("result", "error");
-                poJSON.put("message", "Tax amount cannot be greater than the net vatable sales.");
-                return poJSON;
-            }
+            //Commented validation for tax amount : Arsiela 07-16-2026 - Check Updated BR
+//            if(ldblTotalBaseAmount > ldblVatSales){
+//                poJSON.put("result", "error");
+//                poJSON.put("message", "Tax Base amount cannot be greater than the net vatable sales.");
+//                return poJSON;
+//            }
+//
+//            if(ldblTaxAmount > ldblVatSales){
+//                poJSON.put("result", "error");
+//                poJSON.put("message", "Tax amount cannot be greater than the net vatable sales.");
+//                return poJSON;
+//            }
         } else {
             
             try { 
@@ -2818,17 +2819,18 @@ public class DisbursementVoucher extends Transaction {
                    }
                 }
                 
-                if(ldblTotalBaseAmount > ldblTransTotal){
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Tax Base amount cannot be greater than the transaction total.");
-                    return poJSON;
-                }
-                
-                if(ldblTaxAmount > ldblTransTotal){
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Tax amount cannot be greater than the transaction total.");
-                    return poJSON;
-                }
+                //Commented validation for tax amount : Arsiela 07-16-2026 - Check Updated BR
+//                if(ldblTotalBaseAmount > ldblTransTotal){
+//                    poJSON.put("result", "error");
+//                    poJSON.put("message", "Tax Base amount cannot be greater than the transaction total.");
+//                    return poJSON;
+//                }
+//                
+//                if(ldblTaxAmount > ldblTransTotal){
+//                    poJSON.put("result", "error");
+//                    poJSON.put("message", "Tax amount cannot be greater than the transaction total.");
+//                    return poJSON;
+//                }
             } catch (GuanzonException | SQLException ex) {
                 Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
                 poJSON.put("result", "error");
@@ -4497,11 +4499,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
             ldblTotalBaseAmount = Double.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(ldblTotalBaseAmount, false).replace(",", ""));
             double ldblVatSales = Double.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(Master().getVATSale(), false).replace(",", ""));
             if(ldblVatSales > 0.0000){
-                if(!Objects.equals(ldblTotalBaseAmount, ldblVatSales)){
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Total tax base amount must be equal to net vatable sales.");
-                    return poJSON;
-                }
+                
+                    //Commented validation for tax amount //Arsiela 07-16-2026 - Check Updated BR
+//                if(!Objects.equals(ldblTotalBaseAmount, ldblVatSales)){
+//                    poJSON.put("result", "error");
+//                    poJSON.put("message", "Total tax base amount must be equal to net vatable sales.");
+//                    return poJSON;
+//                }
             }
         }
         
