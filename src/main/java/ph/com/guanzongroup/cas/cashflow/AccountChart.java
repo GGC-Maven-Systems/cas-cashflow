@@ -313,7 +313,7 @@ public class AccountChart extends Parameter {
         List<String> lsFilter = new ArrayList<>();
 //
         lsFilter.add(" (a.sParentCd = '' OR a.sParentCd IS NULL) ");
-        lsFilter.add(" a.sIndstCde =  " + SQLUtil.toSQL(getModel().getIndustryId()));
+        lsFilter.add(" a.sIndstCde =  " + SQLUtil.toSQL(poModel.getIndustryId()));
         if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
             lsSQL += " WHERE " + String.join(" AND ", lsFilter);
         }
