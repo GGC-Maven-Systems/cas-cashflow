@@ -311,7 +311,7 @@ public class AccountChart extends Parameter {
     public JSONObject searchRecordParent(String value, boolean byCode,String industryCd) throws SQLException, GuanzonException {
         String lsSQL = getSQ_Browse();
         List<String> lsFilter = new ArrayList<>();
-//
+
         System.out.println(poModel.getIndustryId());
         lsFilter.add(" (a.sParentCd = '' OR a.sParentCd IS NULL) ");
         lsFilter.add(" a.sIndstCde =  " + SQLUtil.toSQL(industryCd));
@@ -491,9 +491,12 @@ public class AccountChart extends Parameter {
         object.setRecordStatus("1");
 
         poJSON = object.searchRecordParent(value, byCode,selectedIndustry);
-        System.out.println(poModel.getIndustryId());
+        System.out.println(poModel.getAccountCode());
         if ("success".equals((String) poJSON.get("result"))) {
-            if(poModel.getAccountCode().equals(object.getModel().getAccountCode())){
+            if (poModel.getAccountCode() != null
+                    && !poModel.getAccountCode().trim().isEmpty()
+                    && poModel.getAccountCode().equals(object.getModel().getAccountCode())) {
+
                 poJSON.put("result", "error");
                 poJSON.put("message", "Parent account cannot be the same as the current account.");
                 return poJSON;
