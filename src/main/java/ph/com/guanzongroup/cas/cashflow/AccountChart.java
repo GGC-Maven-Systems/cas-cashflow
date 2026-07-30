@@ -55,7 +55,7 @@ import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
  * @author
  */
 public class AccountChart extends Parameter {
-
+    protected String selectedIndustry = null;
     Model_Account_Chart poModel;
     /**
      * Initializes the Account Chart controller.
@@ -308,11 +308,13 @@ public class AccountChart extends Parameter {
      * @throws SQLException if a database error occurs
      * @throws GuanzonException if business logic or search operation fails
      */
-    public JSONObject searchRecordParent(String value, boolean byCode) throws SQLException, GuanzonException {
+    public JSONObject searchRecordParent(String value, boolean byCode,String industryCd) throws SQLException, GuanzonException {
         String lsSQL = getSQ_Browse();
         List<String> lsFilter = new ArrayList<>();
 //
+        System.out.println(poModel.getIndustryId());
         lsFilter.add(" (a.sParentCd = '' OR a.sParentCd IS NULL) ");
+        lsFilter.add(" a.sIndstCde =  " + SQLUtil.toSQL(industryCd));
         if (lsSQL != null && !lsSQL.trim().isEmpty() && lsFilter != null && !lsFilter.isEmpty()) {
             lsSQL += " WHERE " + String.join(" AND ", lsFilter);
         }
@@ -460,6 +462,7 @@ public class AccountChart extends Parameter {
 
         if ("success".equals((String) poJSON.get("result"))) {
            poModel.setIndustryId(object.getModel().getIndustryId());
+           selectedIndustry = object.getModel().getIndustryId();
         }
         return poJSON;
     }
@@ -487,8 +490,8 @@ public class AccountChart extends Parameter {
         AccountChart object = new CashflowControllers(poGRider, logwrapr).AccountChart();
         object.setRecordStatus("1");
 
-        poJSON = object.searchRecordParent(value, byCode);
-
+        poJSON = object.searchRecordParent(value, byCode,selectedIndustry);
+        System.out.println(poModel.getIndustryId());
         if ("success".equals((String) poJSON.get("result"))) {
             if(poModel.getAccountCode().equals(object.getModel().getAccountCode())){
                 poJSON.put("result", "error");
