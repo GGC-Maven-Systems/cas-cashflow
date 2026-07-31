@@ -9732,8 +9732,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
 //            if (CheckStat != null && !CheckStat.trim().isEmpty()) {
 //                lsFilter.add("e.cTranStat LIKE " + SQLUtil.toSQL(CheckStat + "%"));
 //            }
-            lsFilter.add("a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID())
-                    + " AND a.sIndstCdx = " +  SQLUtil.toSQL(Master().getIndustryID()));
+            lsFilter.add("a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID()));
             if(poGRider.getUserLevel()<=UserRight.ENCODER){
                 lsFilter.add("a.sTransNox LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%"));
             }
@@ -9997,8 +9996,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 }
             }
 
-            lsFilter.add("a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID())
-                    + " AND a.sIndstCdx = " +  SQLUtil.toSQL(Master().getIndustryID()));
+            lsFilter.add("a.sCompnyID = " + SQLUtil.toSQL(Master().getCompanyID()));
 
             if(poGRider.getUserLevel()<=UserRight.ENCODER){
                 lsFilter.add("a.sTransNox LIKE " + SQLUtil.toSQL(poGRider.getBranchCode() + "%"));
