@@ -9987,11 +9987,11 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                         joiner.add(SQLUtil.toSQL(String.valueOf(CheckStat.charAt(i))));
                     }
 
-                    lsFilter.add("b.cTranStat IN (" + joiner.toString() + ")");
+                    lsFilter.add("e.cTranStat IN (" + joiner.toString() + ")");
 
                 } else {
 
-                    lsFilter.add("b.cTranStat = " + SQLUtil.toSQL(CheckStat));
+                    lsFilter.add("e.cTranStat = " + SQLUtil.toSQL(CheckStat));
 
                 }
             }
