@@ -476,14 +476,14 @@ public class DisbursementVoucher extends Transaction {
             case DisbursementStatic.DISAPPROVED:
             case DisbursementStatic.CERTIFIED:
             case DisbursementStatic.AUTHORIZED:
-                poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus())+"\nCheck transaction history.");
+                poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+"\nCheck transaction history.");
                 poJSON.put("result", "error");
                 return poJSON;
             case DisbursementStatic.VERIFIED:
             case DisbursementStatic.APPROVED:
             case DisbursementStatic.CONFIRMED:
                 if(isEntry){
-                    poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus())+"!\nCheck transaction history.");
+                    poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+"!\nCheck transaction history.");
                     poJSON.put("result", "error");
                     return poJSON;
                 } else {
@@ -491,21 +491,21 @@ public class DisbursementVoucher extends Transaction {
                     if(DisbursementStatic.CONFIRMED.equals(psForm)){
                         if(!DisbursementStatic.CONFIRMED.equals(loObject.getTransactionStatus())
                             && !DisbursementStatic.OPEN.equals(loObject.getTransactionStatus())){
-                            poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus())+"!\nCheck transaction history.");
+                            poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+"!\nCheck transaction history.");
                             poJSON.put("result", "error");
                             return poJSON;
                         }
                     } else if(DisbursementStatic.VERIFIED.equals(psForm)){
                         if(!DisbursementStatic.VERIFIED.equals(loObject.getTransactionStatus())
                             && !DisbursementStatic.CONFIRMED.equals(loObject.getTransactionStatus())){
-                            poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus())+"!\nCheck transaction history.");
+                            poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+"!\nCheck transaction history.");
                             poJSON.put("result", "error");
                             return poJSON;
                         }
                     } else if(DisbursementStatic.APPROVED.equals(psForm)){
                         if(!DisbursementStatic.APPROVED.equals(loObject.getTransactionStatus())
                             && !DisbursementStatic.VERIFIED.equals(loObject.getTransactionStatus())){
-                            poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus())+"!\nCheck transaction history.");
+                            poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+"!\nCheck transaction history.");
                             poJSON.put("result", "error");
                             return poJSON;
                         }
@@ -515,14 +515,14 @@ public class DisbursementVoucher extends Transaction {
                 
             case DisbursementStatic.RETURNED_I:
                 if(!DisbursementStatic.APPROVED.equals(psForm)){
-                    poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus())+"!\nCheck transaction history.");
+                    poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+"!\nCheck transaction history.");
                     poJSON.put("result", "error");
                     return poJSON;
                 }
                 break;
             case DisbursementStatic.RETURNED:
                 if(!DisbursementStatic.CONFIRMED.equals(psForm)){
-                    poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus())+"!\nCheck transaction history.");
+                    poJSON.put("message", "Transaction status was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+"!\nCheck transaction history.");
                     poJSON.put("result", "error");
                     return poJSON;
                 }
@@ -856,7 +856,7 @@ public class DisbursementVoucher extends Transaction {
         
         if (!isAllowed(loObject.getTransactionStatus(), lsStatus)) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus())+".");
+            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+".");
             return poJSON;
         }
         
@@ -956,7 +956,7 @@ public class DisbursementVoucher extends Transaction {
         
         if (!isAllowed(loObject.getTransactionStatus(), lsStatus)) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus())+".");
+            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+".");
             return poJSON;
         }
         
@@ -1025,7 +1025,7 @@ public class DisbursementVoucher extends Transaction {
 
         if (!isAllowed((String) poMaster.getValue("cTranStat"), lsStatus)) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat"))+".");
+            poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat")).toLowerCase()+".");
             return poJSON;
         }
 
@@ -1155,7 +1155,7 @@ public class DisbursementVoucher extends Transaction {
             
             if (!isAllowed((String) poMaster.getValue("cTranStat"), lsStatus)) {
                 poJSON.put("result", "error");
-                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat"))+".");
+                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat")).toLowerCase()+".");
                 return poJSON;
             }
 
@@ -1252,7 +1252,7 @@ public class DisbursementVoucher extends Transaction {
             
             if (!isAllowed((String) poMaster.getValue("cTranStat"), lsStatus)) {
                 poJSON.put("result", "error");
-                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat"))+".");
+                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat")).toLowerCase()+".");
                 return poJSON;
             }
         
@@ -1355,7 +1355,7 @@ public class DisbursementVoucher extends Transaction {
             
             if (!isAllowed((String) poMaster.getValue("cTranStat"), lsStatus)) {
                 poJSON.put("result", "error");
-                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat"))+".");
+                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat")).toLowerCase()+".");
                 return poJSON;
             }
         
@@ -1446,7 +1446,7 @@ public class DisbursementVoucher extends Transaction {
 
         if (!isAllowed((String) poMaster.getValue("cTranStat"), lsStatus)) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat"))+".");
+            poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat")).toLowerCase()+".");
             return poJSON;
         }
 
@@ -1526,7 +1526,7 @@ public class DisbursementVoucher extends Transaction {
         
         if (!isAllowed(loObject.getTransactionStatus(), lsStatus)) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus())+".");
+            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+".");
             return poJSON;
         }
 
@@ -1604,7 +1604,7 @@ public class DisbursementVoucher extends Transaction {
         
         if (!isAllowed(loObject.getTransactionStatus(), lsStatus)) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus())+".");
+            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+".");
             return poJSON;
         }
 
@@ -1712,7 +1712,7 @@ public class DisbursementVoucher extends Transaction {
         
         if (!isAllowed(loObject.getTransactionStatus(), lsStatus)) {
             poJSON.put("result", "error");
-            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus())+".");
+            poJSON.put("message", "Transaction was already "+getStatus(loObject.getTransactionStatus()).toLowerCase()+".");
             return poJSON;
         }
 
@@ -1834,7 +1834,7 @@ public class DisbursementVoucher extends Transaction {
             
             if (!isAllowed((String) poMaster.getValue("cTranStat"), lsStatus)) {
                 poJSON.put("result", "error");
-                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat"))+".");
+                poJSON.put("message", "Transaction was already "+getStatus((String) poMaster.getValue("cTranStat")).toLowerCase()+".");
                 return poJSON;
             }
         
