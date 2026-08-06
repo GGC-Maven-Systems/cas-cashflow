@@ -19,6 +19,7 @@ import org.guanzon.cas.parameter.services.ParamControllers;
 import org.json.simple.JSONObject;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Disbursement_Detail;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Disbursement_Master;
+import ph.com.guanzongroup.cas.cashflow.model.Model_Payment_Request_Master;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowControllers;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.CheckStatus;
@@ -981,12 +982,13 @@ public class CheckStatusUpdate extends Transaction {
 
     public JSONObject updatePRF(int Row) throws SQLException, GuanzonException, CloneNotSupportedException {
         poJSON = new JSONObject();
+
         PRFTrans.InitTransaction();
         poJSON = PRFTrans.OpenTransaction(Detail(Row).getSourceNo());
         if (!"success".equals((String) poJSON.get("result"))) {
             return poJSON;
         }
-        
+
         poJSON = PRFTrans.UpdateTransaction();
         if (!"success".equals((String) poJSON.get("result"))) {
             return poJSON;
@@ -999,17 +1001,17 @@ public class CheckStatusUpdate extends Transaction {
         poJSON = PRFTrans.Master().setTransactionStatus(PaymentRequestStatus.CONFIRMED);
         poJSON = PRFTrans.Master().setModifiedDate(poGRider.getServerDate());
         poJSON = PRFTrans.Master().setModifyingId(poGRider.getUserID());
-        
-        poJSON = statusChange( PRFTrans.Master().getTable(),
+
+        poJSON = PRFTrans.changeStatus( PRFTrans.Master().getTable(),
                                 PRFTrans.Master().getTransactionNo(),
                                  "PRF was updated during Check Status Update",
-                            DisbursementStatic.OPEN,
+                            PaymentRequestStatus.CONFIRMED,
                           false,
                               true);
         if (!"success".equals((String) poJSON.get("result"))) {
             return poJSON;
         }
-        
+
         poJSON = PRFTrans.Master().saveRecord();
         if (!"success".equals((String) poJSON.get("result"))) {
             return poJSON;
@@ -1019,6 +1021,8 @@ public class CheckStatusUpdate extends Transaction {
         poJSON.put("message", "success");
         return poJSON;
     }
+
+
 
     public JSONObject updatePO(int Row) throws SQLException, GuanzonException {
         poJSON = new JSONObject();
@@ -1071,10 +1075,10 @@ public class CheckStatusUpdate extends Transaction {
         poJSON = PORTrans.Master().setModifiedDate(poGRider.getServerDate());
         poJSON = PORTrans.Master().setModifyingId(poGRider.getUserID());
         
-        poJSON = statusChange( PORTrans.Master().getTable(),
+        poJSON = PORTrans.changeStatus( PORTrans.Master().getTable(),
                                 PORTrans.Master().getTransactionNo(),
                                  "Purchase Order Receiving was updated during Check Status Update",
-                            DisbursementStatic.OPEN,
+                            PurchaseOrderReceivingStatus.POSTED,
                           false,
                               true);
         if (!"success".equals((String) poJSON.get("result"))) {
@@ -1113,7 +1117,7 @@ public class CheckStatusUpdate extends Transaction {
         poJSON = CPTrans.Master().setModifiedDate(poGRider.getServerDate());
         poJSON = CPTrans.Master().setModifyingId(poGRider.getUserID());
         
-        poJSON = statusChange( CPTrans.Master().getTable(),
+        poJSON = CPTrans.changeStatus( CPTrans.Master().getTable(),
                                 CPTrans.Master().getTransactionNo(),
                                  "Cache Payable was updated during Check Status Update",
                             CachePayableStatus.CONFIRMED,
@@ -1154,7 +1158,7 @@ public class CheckStatusUpdate extends Transaction {
         poJSON = APPaymAdjustTrans.getModel().setModifiedDate(poGRider.getServerDate());
         poJSON = APPaymAdjustTrans.getModel().setModifyingBy(poGRider.getUserID());
         
-        poJSON = statusChange( APPaymAdjustTrans.getModel().getTable(),
+        poJSON = APPaymAdjustTrans.changeStatus( APPaymAdjustTrans.getModel().getTable(),
                                 APPaymAdjustTrans.getModel().getTransactionNo(),
                                  "Accounts Payable Ajustment was updated during Check Status Update",
                             APPaymentAdjustmentStatus.CONFIRMED,
@@ -1271,7 +1275,7 @@ public class CheckStatusUpdate extends Transaction {
         poJSON = SOAMasterTrans.Master().setModifiedDate(poGRider.getServerDate());
         poJSON = SOAMasterTrans.Master().setModifyingId(poGRider.getUserID());
         
-        poJSON = statusChange( SOAMasterTrans.Master().getTable(),
+        poJSON = SOAMasterTrans.changeStatus( SOAMasterTrans.Master().getTable(),
                                 SOAMasterTrans.Master().getTransactionNo(),
                                  "SOA Tagging was updated during Check Status Update",
                             SOATaggingStatus.CONFIRMED,
@@ -1431,7 +1435,7 @@ public class CheckStatusUpdate extends Transaction {
             return poJSON;
         }
 
-        poJSON = isEntryOkay(DisbursementStatic.RETURNED);
+        poJSON = isEntryOkay(DisbursementStatic.RETURNED_I);
         if (!"success".equals((String) poJSON.get("result"))) {
             return poJSON;
         }
