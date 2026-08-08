@@ -2079,7 +2079,11 @@ public class DisbursementVoucher extends Transaction {
         System.out.println(" getSupplierClientID " + Master().getSupplierClientID());
         
         if(Master().getSupplierClientID().equals(Master().Payee().getAPClientID())){
-            poJSON = object.searchRecordbyAPClientID(value, byCode);
+            if(Master().getSupplierClientID() != null && !"".equals(Master().getSupplierClientID())){
+                poJSON = object.searchRecordbyAPClientID(Master().getSupplierClientID(), true); //Added searching thru supplier id by Arsiela 08-08-2026
+            } else {
+                poJSON = object.searchRecordbyAPClientID(value, byCode);
+            }
         } else {
             poJSON = object.searchRecordbyClientID(value, byCode);
         }
