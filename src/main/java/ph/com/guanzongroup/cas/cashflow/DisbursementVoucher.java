@@ -4606,6 +4606,23 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 if (lbUpdated) {
                     for (int lnCtr = 0; lnCtr <= loRecord.getDetailCount() - 1; lnCtr++) {
                         lbUpdated = (Objects.equals(String.format("%.4f", loRecord.Detail(lnCtr).getAmount()), String.format("%.4f", Detail(lnCtr).getAmount())));
+                        
+                        //Check Other value for details - Arsiela 08-15-2026
+                        if (lbUpdated) {
+                            lbUpdated = (Objects.equals(String.format("%.4f", loRecord.Detail(lnCtr).getAmountApplied()), String.format("%.4f", Detail(lnCtr).getAmountApplied())));
+                        }
+                        if (lbUpdated) {
+                            lbUpdated = loRecord.Detail(lnCtr).isWithVat() == Detail(lnCtr).isWithVat();
+                        }
+                        if (lbUpdated) {
+                            lbUpdated = (Objects.equals(String.format("%.4f", loRecord.Detail(lnCtr).getDetailVatSales()), String.format("%.4f", Detail(lnCtr).getDetailVatSales())));
+                        }
+                        if (lbUpdated) {
+                            lbUpdated = (Objects.equals(String.format("%.4f", loRecord.Detail(lnCtr).getDetailVatAmount()), String.format("%.4f", Detail(lnCtr).getDetailVatAmount())));
+                        }
+                        if (lbUpdated) {
+                            lbUpdated = (Objects.equals(String.format("%.4f", loRecord.Detail(lnCtr).getDetailVatExempt()), String.format("%.4f", Detail(lnCtr).getDetailVatExempt())));
+                        }
                         if (!lbUpdated) {
                             break;
                         }
