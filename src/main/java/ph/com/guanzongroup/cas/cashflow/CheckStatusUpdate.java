@@ -666,6 +666,8 @@ public class CheckStatusUpdate extends Transaction {
 //        return poJSON;
 //    }
 
+
+
     public JSONObject cancelCheckPayment(String CheckRemarks) throws SQLException, GuanzonException, ParseException, CloneNotSupportedException {
         poJSON = new JSONObject();
         String lsStatus = CheckStatus.CANCELLED;
@@ -1329,7 +1331,8 @@ public class CheckStatusUpdate extends Transaction {
     }
 
     public JSONObject updateBankAccounts() throws SQLException, GuanzonException {
-        if (CheckStatus.PrintStatus.PRINTED.equals(Master().CheckPayments().getPrint())) {
+        System.out.println("Master().CheckPayments().getPrint(): " + Master().CheckPayments().getPrint());
+        if (CheckStatus.PrintStatus.PRINTED.equals((String) cachedCheckTrans.get("cPrintxxx"))) {
             System.out.println("----------Bank Account Transaction----------");
             //Bank Account Transaction
             BankAccountTrans poBankAccountTrans = new BankAccountTrans(poGRider);
@@ -1342,7 +1345,7 @@ public class CheckStatusUpdate extends Transaction {
                     Master().CheckPayments().getSourceNo(),
                     SQLUtil.toDate(xsDateShort(Master().CheckPayments().getCheckDate()), SQLUtil.FORMAT_SHORT_DATE),
                     Master().CheckPayments().getAmount(),
-                    Master().CheckPayments().getCheckNo(),
+                    (String) cachedCheckTrans.get("sCheckNox"),
                     Master().getVoucherNo(),
                     true);
             if ("error".equals(poJSON.get("result"))) {
@@ -1485,6 +1488,8 @@ public class CheckStatusUpdate extends Transaction {
             poGRider.rollbackTrans();
             return poJSON;
         }
+
+
         poJSON = insertCheckPayment();
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
@@ -1502,6 +1507,7 @@ public class CheckStatusUpdate extends Transaction {
             poGRider.rollbackTrans();
             return poJSON;
         }
+
         poJSON = updateAPClients();
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
@@ -1631,7 +1637,7 @@ public class CheckStatusUpdate extends Transaction {
 
         poJSON = new JSONObject();
         poJSON.put("result", "success");
-        poJSON.put("message", "Check cleared successfully.");
+        poJSON.put("message", "Check Hold successfully.");
         return poJSON;
     }
 
