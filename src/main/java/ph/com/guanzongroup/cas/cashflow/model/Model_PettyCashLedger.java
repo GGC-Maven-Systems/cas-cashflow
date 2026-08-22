@@ -118,6 +118,14 @@ public class Model_PettyCashLedger extends Model {
         return (String) getValue("sSourceNo");
     }
 
+    public JSONObject setBatchNo(String batchNo) {
+        return setValue("sBatchNox", batchNo);
+    }
+
+    public String getBatchNo() {
+        return (String) getValue("sBatchNox");
+    }
+
     public JSONObject setTransactionDate(Date transact) {
         return setValue("dTransact", transact);
     }
