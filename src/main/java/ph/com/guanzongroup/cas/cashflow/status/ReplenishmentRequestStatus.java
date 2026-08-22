@@ -15,4 +15,8 @@ public class ReplenishmentRequestStatus {
     public static final  String POSTED = "2"; 
     public static final  String CANCELLED = "3";
     public static final  String VOID = "4";
+    
+    public static class SourceCode  {
+        public static final  String REPLENISHMENT = "REPL"; 
+    }
 }

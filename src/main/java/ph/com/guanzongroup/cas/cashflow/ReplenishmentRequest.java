@@ -29,6 +29,7 @@ import ph.com.guanzongroup.cas.cashflow.model.Model_Replenishment_Request;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowControllers;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.CashFundStatus;
+import ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStatus;
 import ph.com.guanzongroup.cas.cashflow.status.PettyCashStatus;
 import ph.com.guanzongroup.cas.cashflow.status.ReplenishmentRequestStatus;
 
@@ -36,9 +37,12 @@ import ph.com.guanzongroup.cas.cashflow.status.ReplenishmentRequestStatus;
 public class ReplenishmentRequest extends Parameter {
     public String psIndustryId = "";
     public String psCompanyId = "";
+    public String psFund = "";
     public String psApprover = "";
     
     Model_Replenishment_Request poModel;
+    public List<Model_Replenishment_Request> paModel;
+    
     public List<Model_Cash_Fund_Ledger> paCashFundLedger;
     public List<Model_Cash_Fund_Ledger> paRemovedCashFundLedger;
     public List<Model_PettyCashLedger> paPettyCashLedger;
@@ -63,6 +67,7 @@ public class ReplenishmentRequest extends Parameter {
         paRemovedCashFundLedger = new ArrayList<Model_Cash_Fund_Ledger>();
         paPettyCashLedger = new ArrayList<Model_PettyCashLedger>();
         paRemovedPettyCashLedger = new ArrayList<Model_PettyCashLedger>();
+        paModel = new ArrayList<Model_Replenishment_Request>();
         psApprover = "";
         super.initialize();
     }
@@ -88,6 +93,8 @@ public class ReplenishmentRequest extends Parameter {
     //Set default values for filtering data
     public void setIndustryId(String industryId) { psIndustryId = industryId; }
     public void setCompanyId(String companyId) { psCompanyId = companyId; }
+    public void setFund(String Fund) { psFund = Fund; }
+    public String getfund() { return psFund; }
     
     /**
     * Creates a JSONObject with "result" and "message" fields.
@@ -185,6 +192,39 @@ public class ReplenishmentRequest extends Parameter {
         }
         return lsDepartment;
     }
+    /**
+     * Completely clears the current transaction state.
+     * 
+     * Resets the master model, clears all detail and attachment collections, 
+     * and wipes the industry and payee search filters.
+     */
+    public void resetTransaction(){
+        paLoadCashFundLedger = new ArrayList<>();
+        paPettyCashLedger = new ArrayList<>();
+        paRemovedCashFundLedger = new ArrayList<>();
+        paRemovedPettyCashLedger = new ArrayList<>();
+        paLoadCashFundLedger = new ArrayList<>();
+        paLoadPettyCashLedger = new ArrayList<>();
+    }
+    
+    public JSONObject OpenRecord(String transactionNo) throws CloneNotSupportedException, SQLException, GuanzonException {
+        //Reset Transaction
+        resetTransaction();
+        
+        poJSON = openRecord(transactionNo);
+        if (!isJSONSuccess(poJSON)) {
+            poJSON = setJSON((String) poJSON.get("result"),"Unable to load record. " + (String) poJSON.get("message"));
+            return poJSON;
+        }
+        
+        poJSON = loadLedger(false);
+        if (!isJSONSuccess(poJSON)) {
+            poJSON = setJSON((String) poJSON.get("result"),"Unable to load ledger list. " + (String) poJSON.get("message"));
+            return poJSON;
+        }
+        poJSON = setJSON("success","success");
+        return poJSON;
+    }
     
     public JSONObject SaveRecord() throws SQLException{
         try {
@@ -252,10 +292,20 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poJSON = statusChange(poModel.getTable(), (String) poModel.getValue("sTransNox"), "", lsStatus, false, pbWthParent);
+        poGRider.beginTrans("UPDATE STATUS", "ApproveTransaction", SOURCE_CODE, getModel().getTransactionNo());
+        
+        //Generate PRF
+        poJSON = generatePRF(lsStatus);
         if (!isJSONSuccess(poJSON)) {
             return poJSON;
         }
+        
+        poJSON = statusChange(poModel.getTable(), (String) poModel.getValue("sTransNox"), "", lsStatus, false, true);
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+        
+        poGRider.commitTrans();
 
         poJSON = new JSONObject();
         poJSON = setJSON("success", "Record approved successfully.");
@@ -299,10 +349,20 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poJSON = statusChange(poModel.getTable(), (String) poModel.getValue("sTransNox"), "", lsStatus, false, pbWthParent);
+        poGRider.beginTrans("UPDATE STATUS", "VoidRecord", SOURCE_CODE, getModel().getTransactionNo());
+        
+        //Removed batch no for saved ledger
+        poJSON = updateLedger(lsStatus);
         if (!isJSONSuccess(poJSON)) {
             return poJSON;
         }
+        
+        poJSON = statusChange(poModel.getTable(), (String) poModel.getValue("sTransNox"), "", lsStatus, false, true);
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+
+        poGRider.commitTrans();
 
         poJSON = new JSONObject();
         poJSON = setJSON("success", "Record voided successfully.");
@@ -362,10 +422,25 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poJSON = statusChange(poModel.getTable(), (String) poModel.getValue("sTransNox"), "", lsStatus, false, pbWthParent);
+        poGRider.beginTrans("UPDATE STATUS", "CancelRecord", SOURCE_CODE, getModel().getTransactionNo());
+        
+        //Removed batch no for saved ledger
+        poJSON = updateLedger(lsStatus);
         if (!isJSONSuccess(poJSON)) {
             return poJSON;
         }
+        
+        poJSON = cancelPRF();
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+        
+        poJSON = statusChange(poModel.getTable(), (String) poModel.getValue("sTransNox"), "", lsStatus, false, true);
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+
+        poGRider.commitTrans();
 
         poJSON = new JSONObject();
         poJSON = setJSON("success", "Record cancelled successfully.");
@@ -383,80 +458,33 @@ public class ReplenishmentRequest extends Parameter {
     public JSONObject isEntryOkay() throws SQLException, GuanzonException {
         poJSON = new JSONObject();
 
-//        if (poGRider.getUserLevel() < UserRight.SYSADMIN) {
-        if (!poGRider.getDepartment().equals(System.getProperty("sys.dept.finance"))) { //BR: Authorized users from the Finance Department
-            poJSON = setJSON("error", "User is not allowed to save record.");
+        if (poModel.getTransactionNo()== null || "".equals(poModel.getTransactionNo())) {
+            poJSON = setJSON("error", "Transaction No must not be empty.");
             return poJSON;
-        } else {
-            poJSON = new JSONObject();
+        }
 
-            if (poModel.getTransactionNo()== null || "".equals(poModel.getTransactionNo())) {
-                poJSON = setJSON("error", "Transaction No must not be empty.");
-                return poJSON;
-            }
+        if (poModel.getCashFundId() == null || "".equals(poModel.getCashFundId())) {
+            poJSON = setJSON("error", "Cash fund ID must not be empty.");
+            return poJSON;
+        }
 
-            if (poModel.getCashFundId() == null || "".equals(poModel.getCashFundId())) {
-                poJSON = setJSON("error", "Cash fund ID must not be empty.");
-                return poJSON;
-            }
+        if (poModel.getFundType() == null || "".equals(poModel.getFundType())) {
+            poJSON = setJSON("error", "Fund type must not be empty.");
+            return poJSON;
+        }
 
-            if (poModel.getFundType() == null || "".equals(poModel.getFundType())) {
-                poJSON = setJSON("error", "Fund type must not be empty.");
-                return poJSON;
-            }
-            
-            if (poModel.getTransactionAmount()<= 0.0000) {
-                poJSON = setJSON("error", "Invalid transaction amount.");
-                return poJSON;
-            }
+        if (poModel.getTransactionAmount()<= 0.0000) {
+            poJSON = setJSON("error", "Invalid transaction amount.");
+            return poJSON;
         }
         
-//        poJSON = checkExistingReplenishment();
-//        if (!isJSONSuccess(poJSON)) {
-//            return poJSON;
-//        }
-
         poModel.setModifiedBy(poGRider.getUserID());
         poModel.setModifiedDate(poGRider.getServerDate());
         
         poJSON = setJSON("success", "success");
         return poJSON;
     }
-//    
-//    /**
-//     * Checks if a similar Replenishment record already exists in the database.
-//     *
-//     * @return JSONObject indicating whether a duplicate record was found
-//     * @throws SQLException if a database error occurs
-//     * @throws GuanzonException if a system error occurs
-//     */
-//    public JSONObject checkExistingReplenishment() throws SQLException, GuanzonException{
-//        poJSON = new JSONObject();
-//        //BR : Validate if Replenishment Request with the same Industry, Company, Branch and Department exists
-//        String lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(getModel()), 
-//                                                                    " sCashFIDx != " + SQLUtil.toSQL(getModel().getCashFundId())
-//                                                                    + " AND sBranchCD = " + SQLUtil.toSQL(getModel().getBranchCode())
-//                                                                    + " AND sDeptIDxx = " + SQLUtil.toSQL(getModel().getDepartment())
-//                                                                    + " AND sCompnyID = " + SQLUtil.toSQL(getModel().getCompanyId())
-//                                                                    + " AND sIndstCdx = " + SQLUtil.toSQL(getModel().getIndustryId())
-//                                                                    );
-//        System.out.println("Executing SQL: " + lsSQL);
-//        ResultSet loRS = poGRider.executeQuery(lsSQL);
-//        try {
-//            if (MiscUtil.RecordCount(loRS) > 0) {
-//                if(loRS.next()){
-//                    if(loRS.getString("sCashFIDx") != null && !"".equals(loRS.getString("sCashFIDx"))){
-//                        poJSON = setJSON("error", "Unable to proceed.\nA Replenishment Request with same Branch, Department, Company, and Industry is already registered.\n\nCheck cash fund ID : <" + loRS.getString("sCashFIDx") + ">");
-//                    }
-//                }
-//            }
-//            MiscUtil.close(loRS);
-//        } catch (SQLException e) {
-//            System.out.println("No record loaded.");
-//        }
-//        return poJSON;
-//    }
-//    
+    
     /**
      * Returns the Replenishment Request model instance.
      *
@@ -526,8 +554,14 @@ public class ReplenishmentRequest extends Parameter {
     * @throws GuanzonException if a system error occurs
     */
     public JSONObject SearchFund(String value, boolean byCode, boolean isSearch) throws ExceptionInInitializerError, SQLException, GuanzonException {
+        poJSON = new JSONObject();
         CashflowControllers loController = new CashflowControllers(poGRider, logwrapr);
         if(!isSearch){
+            if(getModel().getFundType() == null || "".equals(getModel().getFundType())){
+                poJSON = setJSON("error", "Fund Type cannot be empty.");
+                return poJSON;
+            }
+
             if (Logical.YES.equals(getModel().getFundType())) {
                 CashFund loCashFund = loController.CashFund();
                 loCashFund.setRecordStatus(RecordStatus.ACTIVE);
@@ -554,7 +588,10 @@ public class ReplenishmentRequest extends Parameter {
                 }
             }
         } else {
-            //TODO
+            poJSON = searchFund(value);
+            if (isJSONSuccess(poJSON)) {
+                setFund((String) poJSON.get("fund"));
+            }
         
         }
         return poJSON;
@@ -569,43 +606,101 @@ public class ReplenishmentRequest extends Parameter {
     * @throws SQLException if a database error occurs
     * @throws GuanzonException if a system error occurs
     */
-    private JSONObject searchFund(String value, boolean byCode) throws SQLException, GuanzonException {
+    private JSONObject searchFund(String value) throws SQLException, GuanzonException {
         poJSON = new JSONObject();
-        
-        if(System.getProperty("sys.dept.finance") == null || "".equals(System.getProperty("sys.dept.finance"))){
-            poJSON = setJSON("error", "The Finance Department configuration is missing. This field is required to proceed.\nPlease contact your system administrator for assistance.");
-            return poJSON;
+        String lsFund = "";
+        String lsSQL = "SELECT " 
+                    + "  a.sCashFIDx as fundId, " 
+                    + "  a.sBranchCD, " 
+                    + "  a.sDeptIDxx, " 
+                    + "  a.sCompnyID, " 
+                    + "  a.sIndstCdx, " 
+                    + "  a.sCashFDsc as description, " 
+                    + "  a.cTranStat "
+                    + "FROM CashFund a " 
+                    + " WHERE a.sDeptIDxx = " + SQLUtil.toSQL( poGRider.getDepartment())
+                    + " AND a.sCashFDsc LIKE " + SQLUtil.toSQL( "%"+value+"%")
+                    + " AND a.cTranStat = " + SQLUtil.toSQL(CashFundStatus.ACTIVE)
+                    + " AND a.sCompnyID = " + SQLUtil.toSQL( psCompanyId)
+                    + " AND a.sIndstCdx = " + SQLUtil.toSQL( psIndustryId)
+                    + "UNION " 
+                    + "SELECT " 
+                    + "  a.sPettyIDx as fundId, " 
+                    + "  a.sBranchCD, " 
+                    + "  a.sDeptIDxx, " 
+                    + "  a.sCompnyID, " 
+                    + "  a.sIndstCdx, " 
+                    + "  a.sPettyDsc as description, " 
+                    + "  a.cTranStat " 
+                    + " FROM PettyCash a "
+                    + " WHERE a.sDeptIDxx = " + SQLUtil.toSQL( poGRider.getDepartment())
+                    + " AND a.sPettyDsc LIKE " + SQLUtil.toSQL( "%"+value+"%")
+                    + " AND a.cTranStat = " + SQLUtil.toSQL(PettyCashStatus.ACTIVE)
+                    + " AND a.sCompnyID = " + SQLUtil.toSQL( psCompanyId)
+                    + " AND a.sIndstCdx = " + SQLUtil.toSQL( psIndustryId)
+                    ;
+                
+        System.out.println("Executing SQL: " + lsSQL);
+        JSONObject loJSON = ShowDialogFX.Browse(poGRider,
+                lsSQL,
+                value,
+                "Fund ID»Description",
+                "fundId»description",
+                "IFNULL(a.sPettyIDx,a.sCashFIDx)»IFNULL(a.sPettyDsc,a.sCashFDsc)",
+                1);
+        if (loJSON != null) {
+            lsFund = (String) loJSON.get("description");
+        } else {
+            loJSON = setJSON("error", "No record loaded.");
+            return loJSON;
         }
         
-//        String lsSQL = "SELECT " 
-//                + "   a.sEmployID "
-//                + " , a.sDeptIDxx "
-//                + " , a.sBranchCd "
-//                + " , b.sCompnyNm AS EmployNme" 
-//                + " FROM Employee_Master001 a" 
-//                + " LEFT JOIN Client_Master b ON b.sClientID = a.sEmployID" ; 
-//        lsSQL = MiscUtil.addCondition(lsSQL, " a.dFiredxxx IS NULL "
-//                                               + " AND a.sDeptIDxx = " + SQLUtil.toSQL( System.getProperty("sys.dept.finance"))
-//                                            );
-//        lsSQL = lsSQL + " GROUP BY sEmployID ";
-//        System.out.println("Executing SQL: " + lsSQL);
-//        JSONObject loJSON = ShowDialogFX.Browse(poGRider,
-//                lsSQL,
-//                value,
-//                "Employee ID»Employee Name",
-//                "sEmployID»EmployNme",
-//                "a.sEmployID»b.sCompnyNm",
-//                byCode ? 0 : 1);
-//        if (loJSON != null) {
-//            System.out.println("Employee ID " + (String) loJSON.get("sEmployID"));
-//            System.out.println("Employee Name " + (String) loJSON.get("EmployNme"));
-////            poModel.setCashFundManager((String) loJSON.get("sEmployID"));
-//        } else {
-//            loJSON = setJSON("error", "No record loaded.");
-//            return loJSON;
-//        }
-        
         poJSON = setJSON("success", "success");
+        poJSON.put("fund", lsFund);
+        return poJSON;
+    }
+    
+    /**
+    * Loads a list of transactions based on the provided filters.
+    * 
+    * @return A {@link JSONObject} indicating "success" if records were loaded, 
+    *         otherwise returns an "error" status with a descriptive message.
+    * @throws SQLException     If a database access error occurs.
+    * @throws GuanzonException If an application-level error occurs during record opening.
+    */
+    public JSONObject loadTransactionList(String fsFund, String fsTransactionNo) throws SQLException, GuanzonException {
+        poJSON = new JSONObject();
+        paModel = new ArrayList<>();
+        if (fsFund == null) { fsFund = ""; }
+        if (fsTransactionNo == null) { fsTransactionNo = ""; }
+        
+        String lsSQL = MiscUtil.addCondition(getSQ_Browse(),
+                " ( b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " OR c.sCompnyID = " + SQLUtil.toSQL(psCompanyId)
+                + " ) AND ( b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " OR c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId)
+                + " ) AND ( b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + " OR c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode())
+                + " ) AND ( b.sDescript LIKE " + SQLUtil.toSQL("%" + fsFund + "%") + " OR c.sDescript LIKE " + SQLUtil.toSQL("%" + fsFund + "%")
+                + " ) AND a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%")
+            );
+        //TODO filter by department
+        
+        lsSQL = lsSQL + " ORDER BY a.dTransact, a.sTransNox ASC ";
+        System.out.println("Executing SQL: " + lsSQL);
+        ResultSet loRS = poGRider.executeQuery(lsSQL);
+        if (MiscUtil.RecordCount(loRS) <= 0) {
+            poJSON = setJSON("error", "No record found.");
+            return poJSON;
+        }
+
+        while (loRS.next()) {
+            Model_Replenishment_Request loObject = new CashflowModels(poGRider).Replenishment_Request();
+            poJSON = loObject.openRecord(loRS.getString("sTransNox"));
+            if (isJSONSuccess(poJSON)) {
+                paModel.add((Model_Replenishment_Request) loObject);
+            } else {
+                return poJSON;
+            }
+        }
+        MiscUtil.close(loRS);
         return poJSON;
     }
     
@@ -616,7 +711,7 @@ public class ReplenishmentRequest extends Parameter {
     * @throws SQLException if a database access error occurs
     * @throws GuanzonException if business logic fails
     */
-    public JSONObject loadLedger() throws SQLException, GuanzonException {
+    public JSONObject loadLedger(boolean fbIsUI) throws SQLException, GuanzonException {
         poJSON = new JSONObject();
         
         if(getModel().getCashFundId() == null || "".equals(getModel().getCashFundId())){
@@ -644,11 +739,18 @@ public class ReplenishmentRequest extends Parameter {
         ResultSet loRS;
         String lsSQL = "";
         if(Logical.YES.equals(getModel().getFundType())){
-            lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
-                " sCashFIDx = " + SQLUtil.toSQL(getModel().getCashFundId())
-                + " AND cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
-                + " AND (sBatchNox IS NULL OR sBatchNox = '') "
-            );
+            if(fbIsUI){
+                lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
+                    " sCashFIDx = " + SQLUtil.toSQL(getModel().getCashFundId())
+                    + " AND cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
+                    + " AND (sBatchNox IS NULL OR sBatchNox = '') "
+                );
+            } else {
+                lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
+                    " sBatchNox = " + SQLUtil.toSQL(getModel().getTransactionNo())
+                    + " AND cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
+                );
+            }
             
             lsSQL = lsSQL + " GROUP BY sCashFIDx, sSourceCD, sSourceNo ORDER BY dTransact ASC ";
             System.out.println("Executing SQL: " + lsSQL);
@@ -662,19 +764,31 @@ public class ReplenishmentRequest extends Parameter {
                 Model_Cash_Fund_Ledger loObject = new CashflowModels(poGRider).CashFundLedger();
                 poJSON = loObject.openRecord(loRS.getString("sCashFIDx"),loRS.getString("sSourceCD"),loRS.getString("sSourceNo"));
                 if (isJSONSuccess(poJSON)) {
-                    if(!paLoadCashFundLedger.contains((Model_Cash_Fund_Ledger) loObject)){
-                        paLoadCashFundLedger.add((Model_Cash_Fund_Ledger) loObject);
+                    if(fbIsUI){
+                        if(!paCashFundLedger.contains((Model_Cash_Fund_Ledger) loObject)){
+                            paLoadCashFundLedger.add((Model_Cash_Fund_Ledger) loObject);
+                        }
+                    } else {
+                        if(!paCashFundLedger.contains((Model_Cash_Fund_Ledger) loObject)){
+                            paCashFundLedger.add((Model_Cash_Fund_Ledger) loObject);
+                        }
                     }
                 }
             }
             MiscUtil.close(loRS);
         } else {
-            lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).PettyCashFundLedger()),
-                " sPettyIDx = " + SQLUtil.toSQL(getModel().getCashFundId())
-                + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
-                + " AND (sBatchNox IS NULL OR sBatchNox = '') "
-            );
-            
+            if(fbIsUI){
+                lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).PettyCashFundLedger()),
+                    " sPettyIDx = " + SQLUtil.toSQL(getModel().getCashFundId())
+                    + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
+                    + " AND (sBatchNox IS NULL OR sBatchNox = '') "
+                );
+            } else {
+                lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
+                    " sBatchNox = " + SQLUtil.toSQL(getModel().getTransactionNo())
+                    + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
+                );
+            }
             lsSQL = lsSQL + " GROUP BY sPettyIDx, sSourceCD, sSourceNo ORDER BY dTransact ASC ";
             System.out.println("Executing SQL: " + lsSQL);
             loRS = poGRider.executeQuery(lsSQL);
@@ -687,8 +801,14 @@ public class ReplenishmentRequest extends Parameter {
                 Model_PettyCashLedger loObject = new CashflowModels(poGRider).PettyCashFundLedger();
                 poJSON = loObject.openRecord(loRS.getString("sPettyIDx"),loRS.getString("sSourceCD"),loRS.getString("sSourceNo"));
                 if (isJSONSuccess(poJSON)) {
-                    if(!paPettyCashLedger.contains((Model_PettyCashLedger) loObject)){ 
-                        paLoadPettyCashLedger.add((Model_PettyCashLedger) loObject);
+                    if(fbIsUI){
+                        if(!paPettyCashLedger.contains((Model_PettyCashLedger) loObject)){ 
+                            paLoadPettyCashLedger.add((Model_PettyCashLedger) loObject);
+                        }
+                    } else {
+                        if(!paPettyCashLedger.contains((Model_PettyCashLedger) loObject)){ 
+                            paPettyCashLedger.add((Model_PettyCashLedger) loObject);
+                        }
                     }
                 }
             }
@@ -833,6 +953,25 @@ public class ReplenishmentRequest extends Parameter {
         return poJSON;
     }
     
+    public void computeFields(){
+        Double lsTransactionAmount = 0.0000;
+        if(Logical.YES.equals(getModel().getFundType())){
+            //Get Added cash fund ledger
+            for(int lnCtr = 0; lnCtr < getCashFundLedgerListCount(); lnCtr++){
+                lsTransactionAmount += CashFundLedgerList(lnCtr).getCreditAmount();
+            }
+
+        } else {
+            //Get Added petty cash ledger
+            for(int lnCtr = 0; lnCtr < getPettyCashLedgerListCount(); lnCtr++){
+                lsTransactionAmount += PettyCashLedgerList(lnCtr).getCreditAmount();
+            }
+
+        }
+        
+        getModel().setTransactionAmount(lsTransactionAmount);
+    }
+    
     /**
     * Returns a readable status of the current Replenishment Request transaction.
     *
@@ -867,7 +1006,35 @@ public class ReplenishmentRequest extends Parameter {
     public JSONObject saveOthers() {
         try {
             System.out.println("--------------------------SAVE OTHERS---------------------------------------------");
-            if(Logical.YES.equals(getModel().getFundType())){
+            poJSON = updateLedger(getModel().getTransactionStatus());
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+        
+        } catch (SQLException | GuanzonException   ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+            poJSON = setJSON("error", MiscUtil.getException(ex));
+            return poJSON;
+        }
+
+        poJSON = setJSON("success", "success");
+        return poJSON;
+    }
+    
+    private JSONObject updateLedger(String fsStatus) throws SQLException, GuanzonException{
+        boolean lbIsRemoved;
+        switch(fsStatus){
+            case ReplenishmentRequestStatus.VOID:
+            case ReplenishmentRequestStatus.CANCELLED:
+                lbIsRemoved = true;
+            break;
+            default:
+                lbIsRemoved = false;
+            break;
+        }
+        
+        if(Logical.YES.equals(getModel().getFundType())){
+            System.out.println("--------------------------SAVE ADDED CASH FUND LEDGER---------------------------------------------");
                 //Update Added cash fund ledger
                 for(int lnCtr = 0; lnCtr < getCashFundLedgerListCount(); lnCtr++){
                     if(CashFundLedgerList(lnCtr).getBatchNo() == null || "".equals(CashFundLedgerList(lnCtr).getBatchNo())){
@@ -878,43 +1045,61 @@ public class ReplenishmentRequest extends Parameter {
                             }
                         }
 
-                        if(CashFundLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
-                            poJSON = CashFundLedgerList(lnCtr).setBatchNo(getModel().getTransactionNo());
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
+                        poJSON = CashFundLedgerList(lnCtr).setBatchNo(getModel().getTransactionNo());
+                        if (!isJSONSuccess(poJSON)) {
+                            return poJSON;
+                        }
+                    } else {
+                        if(lbIsRemoved){
+                            if(CashFundLedgerList(lnCtr).getEditMode() != EditMode.UPDATE){
+                                poJSON = CashFundLedgerList(lnCtr).updateRecord();
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
                             }
-                            
-                            poJSON = CashFundLedgerList(lnCtr).saveRecord();
+
+                            poJSON = CashFundLedgerList(lnCtr).setBatchNo(null);
                             if (!isJSONSuccess(poJSON)) {
                                 return poJSON;
                             }
                         }
                     }
+                    
+                    if(CashFundLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
+                        poJSON = CashFundLedgerList(lnCtr).saveRecord();
+                        if (!isJSONSuccess(poJSON)) {
+                            return poJSON;
+                        }
+                    }
                 }
 
-                //Update Removed cash fund ledger
-                for(int lnCtr = 0; lnCtr < getRemovedCashFundLedgerListCount(); lnCtr++){
-                    if(RemovedCashFundLedgerList(lnCtr).getBatchNo() != null && !"".equals(RemovedCashFundLedgerList(lnCtr).getBatchNo())){
-                        if(RemovedCashFundLedgerList(lnCtr).getEditMode() != EditMode.UPDATE){
-                            poJSON = RemovedCashFundLedgerList(lnCtr).updateRecord();
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
+                if(!lbIsRemoved){
+                    System.out.println("--------------------------SAVE REMOVED CASH FUND LEDGER---------------------------------------------");
+                    //Update Removed cash fund ledger
+                    for(int lnCtr = 0; lnCtr < getRemovedCashFundLedgerListCount(); lnCtr++){
+                        if(RemovedCashFundLedgerList(lnCtr).getBatchNo() != null && !"".equals(RemovedCashFundLedgerList(lnCtr).getBatchNo())){
+                            if(RemovedCashFundLedgerList(lnCtr).getEditMode() != EditMode.UPDATE){
+                                poJSON = RemovedCashFundLedgerList(lnCtr).updateRecord();
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
                             }
-                        }
-                        if(RemovedCashFundLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
-                            poJSON = RemovedCashFundLedgerList(lnCtr).setBatchNo(null);
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
-                            }
+                            if(RemovedCashFundLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
+                                poJSON = RemovedCashFundLedgerList(lnCtr).setBatchNo(null);
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
 
-                            poJSON = RemovedCashFundLedgerList(lnCtr).saveRecord();
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
+                                poJSON = RemovedCashFundLedgerList(lnCtr).saveRecord();
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
                             }
                         }
                     }
                 }
             } else {
+                System.out.println("--------------------------SAVE ADDED PETTY CASH LEDGER---------------------------------------------");
                 //Update Added petty cash ledger
                 for(int lnCtr = 0; lnCtr < getPettyCashLedgerListCount(); lnCtr++){
                     if(PettyCashLedgerList(lnCtr).getBatchNo() == null || "".equals(PettyCashLedgerList(lnCtr).getBatchNo())){
@@ -924,53 +1109,199 @@ public class ReplenishmentRequest extends Parameter {
                                 return poJSON;
                             }
                         }
-                        
-                        
-                        if(PettyCashLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
-                            poJSON = PettyCashLedgerList(lnCtr).setBatchNo(getModel().getTransactionNo());
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
+
+                        poJSON = PettyCashLedgerList(lnCtr).setBatchNo(getModel().getTransactionNo());
+                        if (!isJSONSuccess(poJSON)) {
+                            return poJSON;
+                        }
+                    } else {
+                        if(lbIsRemoved){
+                            if(PettyCashLedgerList(lnCtr).getEditMode() != EditMode.UPDATE){
+                                poJSON = PettyCashLedgerList(lnCtr).updateRecord();
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
                             }
 
-                            poJSON = PettyCashLedgerList(lnCtr).saveRecord();
+                            poJSON = PettyCashLedgerList(lnCtr).setBatchNo(null);
                             if (!isJSONSuccess(poJSON)) {
                                 return poJSON;
                             }
                         }
                     }
+                    
+                    if(PettyCashLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
+                        poJSON = PettyCashLedgerList(lnCtr).saveRecord();
+                        if (!isJSONSuccess(poJSON)) {
+                            return poJSON;
+                        }
+                    }
                 }
 
-                //Update Removed petty cash ledger
-                for(int lnCtr = 0; lnCtr < getRemovedPettyCashLedgerListCount(); lnCtr++){
-                    if(RemovedPettyCashLedgerList(lnCtr).getBatchNo() != null && !"".equals(RemovedPettyCashLedgerList(lnCtr).getBatchNo())){
-                        if(RemovedPettyCashLedgerList(lnCtr).getEditMode() != EditMode.UPDATE){
-                            poJSON = RemovedPettyCashLedgerList(lnCtr).updateRecord();
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
+                if(!lbIsRemoved){
+                    System.out.println("--------------------------SAVE REMOVED PETTY CASH LEDGER---------------------------------------------");
+                    //Update Removed petty cash ledger
+                    for(int lnCtr = 0; lnCtr < getRemovedPettyCashLedgerListCount(); lnCtr++){
+                        if(RemovedPettyCashLedgerList(lnCtr).getBatchNo() != null && !"".equals(RemovedPettyCashLedgerList(lnCtr).getBatchNo())){
+                            if(RemovedPettyCashLedgerList(lnCtr).getEditMode() != EditMode.UPDATE){
+                                poJSON = RemovedPettyCashLedgerList(lnCtr).updateRecord();
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
                             }
-                        }
-                        if(RemovedPettyCashLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
-                            poJSON = RemovedPettyCashLedgerList(lnCtr).setBatchNo(null);
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
-                            }
+                            if(RemovedPettyCashLedgerList(lnCtr).getEditMode() == EditMode.UPDATE){
+                                poJSON = RemovedPettyCashLedgerList(lnCtr).setBatchNo(null);
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
 
-                            poJSON = RemovedPettyCashLedgerList(lnCtr).saveRecord();
-                            if (!isJSONSuccess(poJSON)) {
-                                return poJSON;
+                                poJSON = RemovedPettyCashLedgerList(lnCtr).saveRecord();
+                                if (!isJSONSuccess(poJSON)) {
+                                    return poJSON;
+                                }
                             }
                         }
                     }
                 }
 
             }
-        
-        } catch (SQLException | GuanzonException   ex) {
-            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
-            poJSON = setJSON("error", MiscUtil.getException(ex));
+        poJSON = setJSON("success", "success");
+        return poJSON;
+    }
+    
+    
+    private JSONObject generatePRF(String fsStatus)
+            throws CloneNotSupportedException,
+            SQLException,
+            GuanzonException {
+        poJSON = new JSONObject();
+
+        //Added validation to generate PRF only if the Status is APPROVED.
+        if (!ReplenishmentRequestStatus.APPROVED.equals(fsStatus)) {
+            poJSON.put("result", "success");
             return poJSON;
         }
 
+        try {
+            System.out.println("poJSON = generatePRF()");
+            if (getModel().getTransactionAmount() > 0.0000) {
+                PaymentRequest loPaymentRequest = new CashflowControllers(poGRider, null).PaymentRequest();
+                poJSON = loPaymentRequest.InitTransaction();
+                if (isJSONSuccess(poJSON)) {
+                    return poJSON;
+                }
+                poJSON = loPaymentRequest.NewTransaction();
+                if (isJSONSuccess(poJSON)) {
+                    return poJSON;
+                }
+                
+                String lsPayee = "";
+                String lsFund = "";
+                String lsIndustryId = "";
+                String lsCompanyId = "";
+                if (Logical.YES.equals(getModel().getFundType())) {
+                    lsPayee = getModel().CashFund().getCashFundManager();
+                    lsFund = "Cash Fund "+ getModel().CashFund().getDescription();
+                    lsIndustryId = getModel().CashFund().getIndustryId();
+                    lsCompanyId = getModel().CashFund().getCompanyId();
+                } else {
+                    lsPayee = getModel().PettyCash().getPettyManager();
+                    lsFund = "Petty Cash"+ getModel().PettyCash().getDescription();
+                    lsIndustryId = getModel().CashFund().getIndustryId();
+                    lsCompanyId = getModel().CashFund().getCompanyId();
+                }
+
+                Payee object = new CashflowControllers(poGRider, logwrapr).Payee();
+                object.setRecordStatus(RecordStatus.ACTIVE);
+                poJSON = object.searchPayee(lsPayee);
+                if (isJSONSuccess(poJSON)) {
+                    lsPayee = (String) poJSON.get("sPayeeIDx");
+                }
+
+
+                loPaymentRequest.Master().setTransactionDate(poGRider.getServerDate());
+                loPaymentRequest.Master().setBranchCode(poGRider.getBranchCode());
+                loPaymentRequest.Master().setDepartmentID(poGRider.getDepartment());
+                loPaymentRequest.Master().setRemarks("Replenishment Request for "+lsFund);
+                loPaymentRequest.Master().setIndustryID(lsIndustryId);
+                loPaymentRequest.Master().setCompanyID(lsCompanyId);
+                loPaymentRequest.Master().setSourceCode("Rprq"); //SOURCE_CODE = "Rprq";
+                loPaymentRequest.Master().setSourceNo(getModel().getTransactionNo());
+                loPaymentRequest.Master().setPayeeID(lsPayee); //Master().getSupplierID()
+                loPaymentRequest.Master().setEntryNo(1);
+                loPaymentRequest.Master().setSeriesNo(loPaymentRequest.getSeriesNoByBranch());
+                loPaymentRequest.Master().setTranTotal(getModel().getTransactionAmount());
+                loPaymentRequest.Master().setNetTotal(getModel().getTransactionAmount());
+                loPaymentRequest.Master().setTransactionStatus(PaymentRequestStatus.CONFIRMED);
+
+                loPaymentRequest.Detail(0).setEntryNo((int) 1);
+                loPaymentRequest.Detail(0).setParticularID("");
+                loPaymentRequest.Detail(0).setAmount(getModel().getTransactionAmount());
+                loPaymentRequest.Detail(0).setDiscount(0.0000);
+                loPaymentRequest.Detail(0).setAddDiscount(0.0000);
+                loPaymentRequest.Detail(0).setVatable("0");
+                loPaymentRequest.Detail(0).setWithHoldingTax(0.0000);
+                loPaymentRequest.Detail(0).setPRFRemarks("Replenishment Request for "+lsFund); 
+                loPaymentRequest.Detail(0).isReverse(true); 
+                loPaymentRequest.AddDetail();
+                
+                loPaymentRequest.setWithParent(true);
+                loPaymentRequest.setWithUI(false);
+                poJSON = loPaymentRequest.SaveTransaction();
+                if (isJSONSuccess(poJSON)) {
+                    return poJSON;
+                }
+            }
+
+        } catch (Exception e) {
+            poJSON.put("result", "error");
+            poJSON.put("message", e.getMessage());
+            return poJSON;
+        }
+        poJSON.put("result", "success");
+        return poJSON;
+    }
+    
+    
+    private JSONObject cancelPRF() throws SQLException, GuanzonException, CloneNotSupportedException, ParseException{
+        //Get generated PRF
+        String lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).PaymentRequestMaster()),
+                " sSourceNo = " + SQLUtil.toSQL(getModel().getTransactionNo())
+                + " AND sSourceCd = "  + SQLUtil.toSQL(ReplenishmentRequestStatus.SourceCode.REPLENISHMENT)
+                + " AND ( cTranStat != "  + SQLUtil.toSQL(PaymentRequestStatus.VOID)
+                + " OR cTranStat != "  + SQLUtil.toSQL(PaymentRequestStatus.CANCELLED)
+                + " )" 
+            );
+        
+        System.out.println("Executing SQL: " + lsSQL);
+        ResultSet loRS = poGRider.executeQuery(lsSQL);
+        if (MiscUtil.RecordCount(loRS) <= 0) {
+            poJSON = setJSON("success", "success");
+            return poJSON;
+        }
+        String lsTransNo = "";
+        if (loRS.next()) {
+            lsTransNo = loRS.getString("sTransNox");
+        }
+        MiscUtil.close(loRS);
+        
+        if(lsTransNo != null && !"".equals(lsTransNo)){
+            PaymentRequest loPaymentRequest = new CashflowControllers(poGRider, null).PaymentRequest();
+            poJSON = loPaymentRequest.InitTransaction();
+            if (isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+            poJSON = loPaymentRequest.OpenTransaction(lsTransNo);
+            if (isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+            loPaymentRequest.setWithParent(true);
+            poJSON = loPaymentRequest.CancelPRFTransaction("Replenishement Request Cancellation");
+            if (isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+        }
+        
         poJSON = setJSON("success", "success");
         return poJSON;
     }
