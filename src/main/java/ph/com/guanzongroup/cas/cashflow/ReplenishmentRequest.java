@@ -86,6 +86,7 @@ public class ReplenishmentRequest extends Parameter {
         
         poModel.setIndustryId(psIndustryId);
         poModel.setCompanyId(psCompanyId);
+        poModel.setTransactionDate(SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE)); 
         
         return poJSON;
     }
@@ -1219,7 +1220,7 @@ public class ReplenishmentRequest extends Parameter {
                 }
 
 
-                loPaymentRequest.Master().setTransactionDate(poGRider.getServerDate());
+                loPaymentRequest.Master().setTransactionDate(SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE)); 
                 loPaymentRequest.Master().setBranchCode(poGRider.getBranchCode());
                 loPaymentRequest.Master().setDepartmentID(poGRider.getDepartment());
                 loPaymentRequest.Master().setRemarks("Replenishment Request for "+lsFund);
