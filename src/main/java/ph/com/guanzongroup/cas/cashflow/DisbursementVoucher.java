@@ -3290,7 +3290,15 @@ public class DisbursementVoucher extends Transaction {
             
         }
 
-        lsSQL = lsSQL + " GROUP BY a.sTransNox ORDER BY a.dTransact, supplier ASC ";
+        switch(fsForm){
+            case DisbursementStatic.CERTIFIED:
+            case DisbursementStatic.AUTHORIZED:
+                lsSQL = lsSQL + " GROUP BY a.sTransNox ORDER BY a.dTransact, a.sVouchrNo ASC ";
+                break;
+            default:
+                lsSQL = lsSQL + " GROUP BY a.sTransNox ORDER BY a.dTransact, supplier ASC ";
+            break;
+        }
         System.out.println("Executing SQL: " + lsSQL);
         ResultSet loRS = poGRider.executeQuery(lsSQL);
         if (MiscUtil.RecordCount(loRS) <= 0) {
