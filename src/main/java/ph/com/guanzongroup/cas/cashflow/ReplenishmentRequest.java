@@ -886,9 +886,10 @@ public class ReplenishmentRequest extends Parameter {
         for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
             Model_Cash_Fund_Ledger loModel = faModel.get(lnCtr);
             if(loModel.getBatchNo() != null && !"".equals(loModel.getBatchNo())){
-                paCashFundLedger.remove((Model_Cash_Fund_Ledger) loModel);
                 paRemovedCashFundLedger.add((Model_Cash_Fund_Ledger) loModel);
             }
+            
+            paCashFundLedger.remove((Model_Cash_Fund_Ledger) loModel);
         }
     }
     
@@ -900,9 +901,10 @@ public class ReplenishmentRequest extends Parameter {
         for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
             Model_PettyCashLedger loModel = faModel.get(lnCtr);
             if(loModel.getBatchNo() != null && !"".equals(loModel.getBatchNo())){
-                paPettyCashLedger.remove((Model_PettyCashLedger) loModel);
                 paRemovedPettyCashLedger.add((Model_PettyCashLedger) loModel);
             }
+            
+            paPettyCashLedger.remove((Model_PettyCashLedger) loModel);
         }
     }
     
