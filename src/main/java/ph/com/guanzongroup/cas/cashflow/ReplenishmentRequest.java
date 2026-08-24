@@ -879,25 +879,30 @@ public class ReplenishmentRequest extends Parameter {
         return this.paRemovedPettyCashLedger.size();
     }
     
-    public void RemoveCashFundLedger(Model_Cash_Fund_Ledger foModel){
+    public void RemoveCashFundLedger(List<Model_Cash_Fund_Ledger> faModel){
         if(paRemovedCashFundLedger == null){
             paRemovedCashFundLedger = new ArrayList<>();
         }
-        
-        if(foModel.getBatchNo() != null && !"".equals(foModel.getBatchNo())){
-            paCashFundLedger.remove((Model_Cash_Fund_Ledger) foModel);
-            paRemovedCashFundLedger.add((Model_Cash_Fund_Ledger) foModel);
+        for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
+            Model_Cash_Fund_Ledger loModel = faModel.get(lnCtr);
+            if(loModel.getBatchNo() != null && !"".equals(loModel.getBatchNo())){
+                paCashFundLedger.remove((Model_Cash_Fund_Ledger) loModel);
+                paRemovedCashFundLedger.add((Model_Cash_Fund_Ledger) loModel);
+            }
         }
     }
     
-    public void RemovePettyCashLedger(Model_PettyCashLedger foModel){
+    public void RemovePettyCashLedger(List<Model_PettyCashLedger> faModel){
         if(paRemovedPettyCashLedger == null){
             paRemovedPettyCashLedger = new ArrayList<>();
         }
         
-        if(foModel.getBatchNo() != null && !"".equals(foModel.getBatchNo())){
-            paPettyCashLedger.remove((Model_PettyCashLedger) foModel);
-            paRemovedPettyCashLedger.add((Model_PettyCashLedger) foModel);
+        for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
+            Model_PettyCashLedger loModel = faModel.get(lnCtr);
+            if(loModel.getBatchNo() != null && !"".equals(loModel.getBatchNo())){
+                paPettyCashLedger.remove((Model_PettyCashLedger) loModel);
+                paRemovedPettyCashLedger.add((Model_PettyCashLedger) loModel);
+            }
         }
     }
     
