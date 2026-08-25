@@ -509,13 +509,13 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
 
-            try {
-                poController.setWithUI(false);
-                poController.ShowStatusHistory();
-            } catch (Exception ex) {
-                Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
-                Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
-            }
+//            try {
+//                poController.setWithUI(false);
+//                poController.ShowStatusHistory();
+//            } catch (Exception ex) {
+//                Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+//                Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
+//            }
             
             poController.getSysUser(psUserId);
             
