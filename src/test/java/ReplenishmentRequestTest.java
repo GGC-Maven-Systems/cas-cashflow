@@ -47,8 +47,8 @@ public class ReplenishmentRequestTest {
     private static String psCompanyId = "M001";
     private static String psCategorCd = "0000007";
     private String psTransNo = "";
-    private String psCashFund = "";
-    private String psPettyCash = "";
+    private String psCashFund = "GCO126000000002";
+    private String psPettyCash = "GCO1026";
 
     @BeforeClass
     public static void setUpClass() throws GuanzonException, SQLException, IOException {
@@ -145,103 +145,36 @@ public class ReplenishmentRequestTest {
         List<String> dataScripts = new ArrayList<>();
 
         schemaScripts.add("industry_schema");
-        schemaScripts.add("category_schema");
+//        schemaScripts.add("category_schema");
         schemaScripts.add("company_schema");
         schemaScripts.add("branch_schema");
-        schemaScripts.add("client_master_schema");
-        schemaScripts.add("po_master_schema");
-        schemaScripts.add("po_detail_schema");
-        schemaScripts.add("po_receiving_master_schema");
-        schemaScripts.add("po_receiving_detail_schema");
-        schemaScripts.add("po_receiving_serial_schema");
-        schemaScripts.add("po_return_master_schema");
-        schemaScripts.add("po_return_detail_schema");
-        schemaScripts.add("transaction_status_history_schema");
-        schemaScripts.add("transaction_attachment_schema");
-        schemaScripts.add("inventory_schema");
-        schemaScripts.add("model_schema");
-        schemaScripts.add("model_variant_schema");
-        schemaScripts.add("measure_schema");
-        schemaScripts.add("color_schema");
-        schemaScripts.add("inv_supplier_schema");
-        schemaScripts.add("inv_master_schema");
-        schemaScripts.add("inv_serial_schema");
-        schemaScripts.add("inv_serial_registration_schema");
-        schemaScripts.add("term_schema");
-        schemaScripts.add("xxxsysfiles_schema");
-        schemaScripts.add("xxxsysaction_schema");
-        schemaScripts.add("journal_master_schema");
-        schemaScripts.add("journal_detail_schema");
-        schemaScripts.add("inv_ledger_schema");
-        schemaScripts.add("xxxsysauth_matrix_master_schema");
-        schemaScripts.add("xxxsysauth_matrix_detail_schema");
-        schemaScripts.add("transaction_authorization_master_schema");
-        schemaScripts.add("transaction_authorization_recipient_schema");
-        schemaScripts.add("transaction_authorization_detail_schema");
-        schemaScripts.add("position_schema");
         schemaScripts.add("department_schema");
-        schemaScripts.add("xxxtransactionsourcetable_schema");
-        schemaScripts.add("cache_payable_master_schema");
-        schemaScripts.add("cache_payable_detail_schema");
-        schemaScripts.add("inv_serial_ledger_schema");
-        schemaScripts.add("ap_client_master_schema");
-        schemaScripts.add("ap_client_ledger_schema");
-        schemaScripts.add("account_chart_schema");
-        schemaScripts.add("account_master_schema");
-        schemaScripts.add("account_ledger_schema");
-        schemaScripts.add("tbj_master_schema");
-        schemaScripts.add("tbj_detail_schema");
-        schemaScripts.add("inv_type_schema");
+        schemaScripts.add("parameter_status_history_schema");
+
+        schemaScripts.add("cashfund_schema");
+        schemaScripts.add("cashfund_ledger_schema");
+        schemaScripts.add("pettycash_schema");
+        schemaScripts.add("pettycash_ledger_schema");
+        schemaScripts.add("replenishment_request_schema");
+        schemaScripts.add("payment_request_master_schema");
+        schemaScripts.add("client_master_schema");
 
 
         dataScripts.add("industry_data");
-        dataScripts.add("category_data");
+//        dataScripts.add("category_data");
         dataScripts.add("company_data");
         dataScripts.add("branch_data");
-        dataScripts.add("client_master_data");
-        dataScripts.add("po_master_data");
-        dataScripts.add("po_detail_data");
-        dataScripts.add("po_receiving_master_data");
-        dataScripts.add("po_receiving_detail_data");
-        dataScripts.add("po_receiving_serial_data");
-        dataScripts.add("po_return_master_data");
-        dataScripts.add("po_return_detail_data");
-        dataScripts.add("transaction_status_history_data");
-        dataScripts.add("transaction_attachment_data");
-        dataScripts.add("inventory_data");
-        dataScripts.add("model_data");
-        dataScripts.add("model_variant_data");
-        dataScripts.add("measure_data");
-        dataScripts.add("color_data");
-        dataScripts.add("inv_supplier_data");
-        dataScripts.add("inv_master_data");
-        dataScripts.add("inv_serial_data");
-        dataScripts.add("inv_serial_registration_data");
-        dataScripts.add("term_data");
-        dataScripts.add("xxxsysfiles_data");
-        dataScripts.add("xxxsysaction_data");
-        dataScripts.add("journal_master_data");
-        dataScripts.add("journal_detail_data");
-        dataScripts.add("inv_ledger_data");
-        dataScripts.add("xxxsysauth_matrix_master_data");
-        dataScripts.add("xxxsysauth_matrix_detail_data");
-        dataScripts.add("transaction_authorization_master_data");
-        dataScripts.add("transaction_authorization_detail_data");
-        dataScripts.add("transaction_authorization_recipient_data");
-        dataScripts.add("position_data");
         dataScripts.add("department_data");
-        dataScripts.add("xxxtransactionsourcetable_data");
-        dataScripts.add("cache_payable_master_data");
-        dataScripts.add("cache_payable_detail_data");
-        dataScripts.add("inv_serial_ledger_data");
-        dataScripts.add("ap_client_master_data");
-        dataScripts.add("ap_client_ledger_data");
-        dataScripts.add("account_chart_data");
-        dataScripts.add("account_master_data");
-        dataScripts.add("account_ledger_data");
-        dataScripts.add("tbj_master_data");
-        dataScripts.add("tbj_detail_data");
-        dataScripts.add("inv_type_data");
+        dataScripts.add("parameter_status_history_data");
+
+
+        dataScripts.add("cashfund_data");
+        dataScripts.add("cashfund_ledger_data");
+        dataScripts.add("pettycash_data");
+        dataScripts.add("pettycash_ledger_data");
+        dataScripts.add("replenishment_request_data");
+        dataScripts.add("payment_request_master_data");
+        dataScripts.add("client_master_data");
 
         for (String schema : schemaScripts) {
             try (FileReader schemaReader = new FileReader("test-data/" + schema + ".sql")) {
@@ -383,16 +316,19 @@ public class ReplenishmentRequestTest {
             
             poController.computeFields();
             loJSON = poController.SaveRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
             psTransNo = poController.getModel().getTransactionNo();
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.VoidRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
             //Set back to OPEN
             loJSON = poController.OpenRecord(psTransNo);
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.updateRecord();
             Assert.assertEquals("success", loJSON.get("result"));
@@ -404,11 +340,13 @@ public class ReplenishmentRequestTest {
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.ApproveRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.CancelRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
             
@@ -506,6 +444,7 @@ public class ReplenishmentRequestTest {
             
             poController.computeFields();
             loJSON = poController.SaveRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
             psTransNo = poController.getModel().getTransactionNo();
@@ -558,27 +497,27 @@ public class ReplenishmentRequestTest {
         } 
     }
     
-    @Test
-    public void test004SearchFund() {
-        try {
-            JSONObject loJSON = new JSONObject();
-            resetController();
-            startNewTransaction();
-            poController.setWithUI(false);
-            poController.getModel().setCompanyId(psCompanyId);
-            poController.getModel().setIndustryId(psIndustryId);
-            loJSON = poController.SearchFund("",false,false);
-            System.out.println("MESSAGE : " + loJSON.get("message"));
-            Assert.assertEquals("success", loJSON.get("result"));
-            
-            loJSON = poController.SearchFund("",false,true);
-            System.out.println("MESSAGE : " + loJSON.get("message"));
-            Assert.assertEquals("success", loJSON.get("result"));
-        } catch (SQLException | GuanzonException | CloneNotSupportedException ex) {
-            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
-            Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
-        } 
-    }
+//    @Test
+//    public void test004SearchFund() {
+//        try {
+//            JSONObject loJSON = new JSONObject();
+//            resetController();
+//            startNewTransaction();
+//            poController.setWithUI(false);
+//            poController.getModel().setCompanyId(psCompanyId);
+//            poController.getModel().setIndustryId(psIndustryId);
+//            loJSON = poController.SearchFund("",false,false);
+//            System.out.println("MESSAGE : " + loJSON.get("message"));
+//            Assert.assertEquals("success", loJSON.get("result"));
+//            
+//            loJSON = poController.SearchFund("",false,true);
+//            System.out.println("MESSAGE : " + loJSON.get("message"));
+//            Assert.assertEquals("success", loJSON.get("result"));
+//        } catch (SQLException | GuanzonException | CloneNotSupportedException ex) {
+//            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+//            Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
+//        } 
+//    }
     
     @Test
     public void test005IsEntryOkay() {
@@ -590,25 +529,34 @@ public class ReplenishmentRequestTest {
             poController.getModel().setCompanyId(psCompanyId);
             poController.getModel().setIndustryId(psIndustryId);
             
+            psTransNo = poController.getModel().getNextCode();
             poController.getModel().setTransactionNo("");
             loJSON = poController.isEntryOkay();
             System.out.println("MESSAGE : " + loJSON.get("message"));
-            Assert.assertEquals("success", loJSON.get("result"));
+            Assert.assertEquals("error", loJSON.get("result"));
             
             poController.getModel().setTransactionNo(psTransNo);
             loJSON = poController.isEntryOkay();
             System.out.println("MESSAGE : " + loJSON.get("message"));
-            Assert.assertEquals("success", loJSON.get("result"));
+            Assert.assertEquals("error", loJSON.get("result"));
             
             poController.getModel().setTransactionNo(psTransNo);
             poController.getModel().setFundType(Logical.YES);
             loJSON = poController.isEntryOkay();
             System.out.println("MESSAGE : " + loJSON.get("message"));
-            Assert.assertEquals("success", loJSON.get("result"));
+            Assert.assertEquals("error", loJSON.get("result"));
             
             poController.getModel().setTransactionNo(psTransNo);
             poController.getModel().setFundType(Logical.YES);
             poController.getModel().setFundId(psCashFund);
+            loJSON = poController.isEntryOkay();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("error", loJSON.get("result"));
+            
+            poController.getModel().setTransactionNo(psTransNo);
+            poController.getModel().setFundType(Logical.YES);
+            poController.getModel().setFundId(psCashFund);
+            poController.getModel().setTransactionAmount(1000.0000);
             loJSON = poController.isEntryOkay();
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));

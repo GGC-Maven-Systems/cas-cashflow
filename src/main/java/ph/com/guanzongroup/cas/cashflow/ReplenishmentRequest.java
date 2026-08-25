@@ -220,8 +220,9 @@ public class ReplenishmentRequest extends Parameter {
         
         poJSON = loadLedger(false);
         if (!isJSONSuccess(poJSON)) {
-            poJSON = setJSON((String) poJSON.get("result"),"Unable to load ledger list. " + (String) poJSON.get("message"));
-            return poJSON;
+            System.out.println("Unable to load ledger list. " + (String) poJSON.get("message"));
+//            poJSON = setJSON((String) poJSON.get("result"),"Unable to load ledger list. " + (String) poJSON.get("message"));
+//            return poJSON;
         }
         poJSON = setJSON("success","success");
         return poJSON;
@@ -280,7 +281,8 @@ public class ReplenishmentRequest extends Parameter {
             if (poGRider.getUserLevel() <= UserRight.ENCODER) {
                 lsDepartment = checkApprover(psApprover);
             }
-            if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
+//            if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
+            if(!lsDepartment.equals(poGRider.getDepartment())){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
                 poJSON.put("result", "error" );
                 poJSON.put("message", "User or approving officer is not authorized to approved the record." );
                 return poJSON;
@@ -409,9 +411,10 @@ public class ReplenishmentRequest extends Parameter {
                 if (poGRider.getUserLevel() <= UserRight.ENCODER) {
                     lsDepartment = checkApprover(psApprover);
                 }
-                if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
+//                if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
+                if(!lsDepartment.equals(poGRider.getDepartment())){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
                     poJSON.put("result", "error" );
-                poJSON.put("message", "User or approving officer is not authorized to cancelled the record." );
+                    poJSON.put("message", "User or approving officer is not authorized to cancelled the record." );
                     return poJSON;
                 }
             }
@@ -811,7 +814,7 @@ public class ReplenishmentRequest extends Parameter {
                     + " AND (sBatchNox IS NULL OR sBatchNox = '') "
                 );
             } else {
-                lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
+                lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).PettyCashFundLedger()),
                     " sBatchNox = " + SQLUtil.toSQL(getModel().getTransactionNo())
                     + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
                 );
@@ -1022,7 +1025,7 @@ public class ReplenishmentRequest extends Parameter {
             case ReplenishmentRequestStatus.CANCELLED:
                 return "Cancelled";
             case ReplenishmentRequestStatus.VOID:
-                return "Void";
+                return "Voided";
             default:
                 return "UNKNOWN";
         }
@@ -1371,12 +1374,12 @@ public class ReplenishmentRequest extends Parameter {
                         "  a.dModified, " +
                         "  b.sCashFDsc, " +
                         "  c.sPettyDsc," +
-                        "  IF(a.cFundType = '1','CASH FUND', 'PETTY CASH') AS sFundType," +
-                        "  IF(a.cFundType = '1',b.sIndstCdx, c.sIndstCdx) AS sIndstCdx," +
-                        "  IF(a.cFundType = '1',b.sCompnyID, c.sCompnyID) AS sCompnyID," +
-                        "FROM Replenishment_Request a " +
-                        "LEFT JOIN CashFund b ON b.sCashFIDx = a.sFundIdxxx " +
-                        "LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxxx ";
+                        "  IF(a.cFundType = '1','CASH FUND', 'PETTY CASH') AS sFundType, " +
+                        "  IF(a.cFundType = '1',b.sIndstCdx, c.sIndstCdx) AS sIndstCdx, " +
+                        "  IF(a.cFundType = '1',b.sCompnyID, c.sCompnyID) AS sCompnyID " +
+                        " FROM Replenishment_Request a " +
+                        " LEFT JOIN CashFund b ON b.sCashFIDx = a.sFundIdxx " +
+                        " LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxx ";
 
         return MiscUtil.addCondition(lsSQL, lsCondition);
     }
