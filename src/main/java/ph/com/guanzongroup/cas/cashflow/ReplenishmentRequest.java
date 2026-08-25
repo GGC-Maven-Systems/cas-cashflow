@@ -764,27 +764,50 @@ public class ReplenishmentRequest extends Parameter {
         
         String lsCondition = "";
         if(psCompanyId != null && !"".equals(psCompanyId)){
-            lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
+//                lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
+            lsCondition = " AND ("
+                        + " (a.cFundType = '1' AND b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
+                        + " OR (a.cFundType <> '1' AND c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
+                        + " )";
+            
         }
         if(psIndustryId != null && !"".equals(psIndustryId)){
             if(lsCondition.isEmpty()){
-                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+//                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+                lsCondition = " AND ("
+                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " )";
+                
             } else {
-                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+//                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+                lsCondition = lsCondition + " AND ("
+                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " )";
             }
         }
         
         String lsSQL = MiscUtil.addCondition(getSQ_Browse(), " a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%"));
         lsSQL = lsSQL + lsCondition;
-        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + " ,c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) +  ")";
-        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sCashFDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + " ,c.sPettyDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") +  ")";
+//        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + " ,c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) +  ")";
+//        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sCashFDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + " ,c.sPettyDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") +  ")";
+
+        lsSQL = lsSQL + " AND ("
+                    + " (a.cFundType = '1' AND b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + ") "
+                    + " OR (a.cFundType <> '1' AND c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + ") "
+                    + " )";
+        lsSQL = lsSQL + " AND ("
+                    + " (a.cFundType = '1' AND b.sCashFDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + ") "
+                    + " OR (a.cFundType <> '1' AND c.sPettyDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + ") "
+                    + " )";
         
         lsSQL = lsSQL + " ORDER BY a.dTransact, a.sTransNox ASC ";
         System.out.println("Executing SQL: " + lsSQL);
         ResultSet loRS = poGRider.executeQuery(lsSQL);
         if (MiscUtil.RecordCount(loRS) <= 0) {
-            poJSON = setJSON("error", "No record found.");
-            return poJSON;
+//            poJSON = setJSON("error", "No record found.");
+//            return poJSON;
         }
 
         while (loRS.next()) {
@@ -797,6 +820,7 @@ public class ReplenishmentRequest extends Parameter {
             }
         }
         MiscUtil.close(loRS);
+        poJSON = setJSON("success", "success");
         return poJSON;
     }
     
@@ -1459,9 +1483,14 @@ public class ReplenishmentRequest extends Parameter {
                         "  a.dModified, " +
                         "  b.sCashFDsc, " +
                         "  c.sPettyDsc," +
-                        "  IF(a.cFundType = '1','CASH FUND', 'PETTY CASH') AS sFundType, " +
-                        "  IF(a.cFundType = '1',b.sIndstCdx, c.sIndstCdx) AS sIndstCdx, " +
-                        "  IF(a.cFundType = '1',b.sCompnyID, c.sCompnyID) AS sCompnyID " +
+                        " CASE WHEN a.cFundType = '1' THEN 'CASH FUND' ELSE 'PETTY CASH' END AS sFundType, " +
+                        "  b.sIndstCdx, " +
+                        "  b.sCompnyID, " +
+                        "  c.sIndstCdx, " +
+                        "  c.sCompnyID " +
+//                        "  IF(a.cFundType = '1','CASH FUND', 'PETTY CASH') AS sFundType, " +
+//                        "  IF(a.cFundType = '1',b.sIndstCdx, c.sIndstCdx) AS sIndstCdx, " +
+//                        "  IF(a.cFundType = '1',b.sCompnyID, c.sCompnyID) AS sCompnyID " +
                         " FROM Replenishment_Request a " +
                         " LEFT JOIN CashFund b ON b.sCashFIDx = a.sFundIdxx " +
                         " LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxx ";
@@ -1622,11 +1651,5 @@ public class ReplenishmentRequest extends Parameter {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         String date = sdf.format(fdValue);
         return date;
-    }
-    
-    private LocalDate strToDate(String val) {
-        DateTimeFormatter date_formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        LocalDate localDate = LocalDate.parse(val, date_formatter);
-        return localDate;
     }
 }

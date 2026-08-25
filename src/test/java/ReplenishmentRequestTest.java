@@ -505,6 +505,24 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            loJSON = poController.OpenRecord(psTransNo);
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+
+            try {
+                poController.setWithUI(false);
+                poController.ShowStatusHistory();
+            } catch (Exception ex) {
+                Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+                Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
+            }
+            
+            poController.getSysUser(psUserId);
+            
+            loJSON = poController.getEntryBy();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+         
         } catch (CloneNotSupportedException | SQLException | GuanzonException | ParseException ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
             Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
@@ -523,7 +541,7 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
-            for(int lnCtr = 0; lnCtr < poController.getCashFundLedgerListCount(); lnCtr++){
+            for(int lnCtr = 0; lnCtr < poController.getTransactionListCount(); lnCtr++){
                 System.out.println("Transaction No : " + poController.TransactionList(lnCtr).getTransactionNo());
             }
             
@@ -533,27 +551,30 @@ public class ReplenishmentRequestTest {
         } 
     }
     
-//    @Test
-//    public void test004SearchFund() {
-//        try {
-//            JSONObject loJSON = new JSONObject();
-//            resetController();
-//            startNewTransaction();
-//            poController.setWithUI(false);
-//            poController.getModel().setCompanyId(psCompanyId);
-//            poController.getModel().setIndustryId(psIndustryId);
+    @Test
+    public void test004SearchFund() {
+        try {
+            JSONObject loJSON = new JSONObject();
+            resetController();
+            startNewTransaction();
+            poController.setWithUI(false);
+            poController.getModel().setCompanyId(psCompanyId);
+            poController.getModel().setIndustryId(psIndustryId);
 //            loJSON = poController.SearchFund("",false,false);
 //            System.out.println("MESSAGE : " + loJSON.get("message"));
 //            Assert.assertEquals("success", loJSON.get("result"));
-//            
+            
+            poController.setFund("test");
+            Assert.assertEquals("test", poController.getfund());
+            
 //            loJSON = poController.SearchFund("",false,true);
 //            System.out.println("MESSAGE : " + loJSON.get("message"));
 //            Assert.assertEquals("success", loJSON.get("result"));
-//        } catch (SQLException | GuanzonException | CloneNotSupportedException ex) {
-//            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
-//            Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
-//        } 
-//    }
+        } catch (SQLException | GuanzonException | CloneNotSupportedException ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+            Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
+        } 
+    }
     
     @Test
     public void test005IsEntryOkay() {
@@ -604,7 +625,7 @@ public class ReplenishmentRequestTest {
     }
 
     @Test
-    public void test002GetStatus() {
+    public void test006GetStatus() {
         Assert.assertNotNull(poController);
 
         Assert.assertEquals("Open", poController.getStatus(ReplenishmentRequestStatus.OPEN));
@@ -614,6 +635,19 @@ public class ReplenishmentRequestTest {
         Assert.assertEquals("Voided", poController.getStatus(ReplenishmentRequestStatus.VOID));
 
         Assert.assertEquals("UNKNOWN", poController.getStatus("X"));
+    }
+
+    @Test
+    public void test007() {
+//        try {
+//            Assert.assertNotNull(poController);
+//
+//            
+//        
+//        } catch (SQLException | GuanzonException  ex) {
+//            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+//            Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
+//        } 
     }
     
 }
