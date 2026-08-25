@@ -714,6 +714,24 @@ public class ReplenishmentRequest extends Parameter {
     }
     
     /**
+    * Retrieves a specific record from the transaction list.
+    * 
+    * @param row The index of the record to retrieve.
+    * @return The Model_Replenishment_Request instance at the specified row.
+    */
+    public Model_Replenishment_Request TransactionList(int row) {
+        return (Model_Replenishment_Request) paModel.get(row);
+    }
+    /**
+     * Returns the total number of records in the transaction list.
+     * 
+     * @return The size of the transaction list.
+     */
+    public int getTransactionListCount() {
+        return this.paModel.size();
+    }
+    
+    /**
     * Loads ledger records
     *
     * @return JSONObject containing status or error message
