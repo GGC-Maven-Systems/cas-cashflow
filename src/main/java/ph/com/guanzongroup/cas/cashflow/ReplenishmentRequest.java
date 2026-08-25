@@ -295,7 +295,7 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poGRider.beginTrans("UPDATE STATUS", "ApproveTransaction", SOURCE_CODE, getModel().getTransactionNo());
+        poGRider.beginTrans("UPDATE STATUS", "ApproveRecord", SOURCE_CODE, getModel().getTransactionNo());
         
         //Generate PRF
         poJSON = generatePRF(lsStatus);
@@ -448,6 +448,90 @@ public class ReplenishmentRequest extends Parameter {
 
         poJSON = new JSONObject();
         poJSON = setJSON("success", "Record cancelled successfully.");
+        return poJSON;
+    }
+    
+    
+    /**
+    * POST the current Replenishment Request record.
+    *
+    * @return JSONObject containing the result of the confirmation process
+    * @throws ParseException if date parsing fails
+    * @throws SQLException if a database error occurs
+    * @throws GuanzonException if a system error occurs
+    * @throws CloneNotSupportedException if cloning is not supported
+    */
+    public JSONObject PostRecord()
+            throws ParseException,
+            SQLException,
+            GuanzonException,
+            CloneNotSupportedException {
+        poJSON = new JSONObject();
+
+        String lsStatus = ReplenishmentRequestStatus.POSTED;
+
+        if (getEditMode() != EditMode.READY) {
+            poJSON = setJSON("error", "No record was loaded.");
+            return poJSON;
+        }
+
+        if (lsStatus.equals(poModel.getTransactionStatus())) {
+            poJSON = setJSON("error", "Record was already posted.");
+            return poJSON;
+        }
+        
+        if(!pbWthParent){
+            psApprover = poGRider.getUserID();
+            poJSON = callApproval();
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+            
+            String lsDepartment = poGRider.getDepartment();
+            if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+                lsDepartment = checkApprover(psApprover);
+            }
+//            if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
+            if(!lsDepartment.equals(poGRider.getDepartment())){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
+                poJSON.put("result", "error" );
+                poJSON.put("message", "User or approving officer is not authorized to post the record." );
+                return poJSON;
+            }
+        }
+
+        //validator
+        poJSON = isEntryOkay();
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+        
+        poGRider.beginTrans("UPDATE STATUS", "PostRecord", SOURCE_CODE, getModel().getTransactionNo());
+        
+        if(Logical.YES.equals(getModel().getFundType())){
+            CashFundTrans loCashFundTrans = new CashFundTrans(poGRider);
+            loCashFundTrans.InitTransaction(getModel().getFundId(), poGRider.getBranchCode(), poGRider.getDepartment());
+            poJSON = loCashFundTrans.Replenishment(getModel().getTransactionNo(), LocalDate.parse(xsDateShort(poGRider.getServerDate())),  getModel().getTransactionAmount(), false);
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+        } else {
+            PettyCashTrans loPettyCashTrans = new PettyCashTrans(poGRider);
+            loPettyCashTrans.InitTransaction(getModel().getFundId(), poGRider.getBranchCode(), poGRider.getDepartment());
+            poJSON = loPettyCashTrans.Replenishment(getModel().getTransactionNo(), LocalDate.parse(xsDateShort(poGRider.getServerDate())),  getModel().getTransactionAmount(), false);
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+        }
+        
+        poJSON = statusChange(poModel.getTable(), (String) poModel.getValue("sTransNox"), "", lsStatus, false, true);
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+        
+        poGRider.commitTrans();
+
+        poJSON = new JSONObject();
+        poJSON = setJSON("success", "Record posted successfully.");
         return poJSON;
     }
     
@@ -1224,11 +1308,11 @@ public class ReplenishmentRequest extends Parameter {
             if (getModel().getTransactionAmount() > 0.0000) {
                 PaymentRequest loPaymentRequest = new CashflowControllers(poGRider, null).PaymentRequest();
                 poJSON = loPaymentRequest.InitTransaction();
-                if (isJSONSuccess(poJSON)) {
+                if (!isJSONSuccess(poJSON)) {
                     return poJSON;
                 }
                 poJSON = loPaymentRequest.NewTransaction();
-                if (isJSONSuccess(poJSON)) {
+                if (!isJSONSuccess(poJSON)) {
                     return poJSON;
                 }
                 
@@ -1253,8 +1337,9 @@ public class ReplenishmentRequest extends Parameter {
                 poJSON = object.searchPayee(lsPayee);
                 if (isJSONSuccess(poJSON)) {
                     lsPayee = (String) poJSON.get("sPayeeIDx");
+                } else {
+                    return poJSON;
                 }
-
 
                 loPaymentRequest.Master().setTransactionDate(SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE)); 
                 loPaymentRequest.Master().setBranchCode(poGRider.getBranchCode());
@@ -1285,7 +1370,7 @@ public class ReplenishmentRequest extends Parameter {
                 loPaymentRequest.setWithParent(true);
                 loPaymentRequest.setWithUI(false);
                 poJSON = loPaymentRequest.SaveTransaction();
-                if (isJSONSuccess(poJSON)) {
+                if (!isJSONSuccess(poJSON)) {
                     return poJSON;
                 }
             }
@@ -1325,16 +1410,16 @@ public class ReplenishmentRequest extends Parameter {
         if(lsTransNo != null && !"".equals(lsTransNo)){
             PaymentRequest loPaymentRequest = new CashflowControllers(poGRider, null).PaymentRequest();
             poJSON = loPaymentRequest.InitTransaction();
-            if (isJSONSuccess(poJSON)) {
+            if (!isJSONSuccess(poJSON)) {
                 return poJSON;
             }
             poJSON = loPaymentRequest.OpenTransaction(lsTransNo);
-            if (isJSONSuccess(poJSON)) {
+            if (!isJSONSuccess(poJSON)) {
                 return poJSON;
             }
             loPaymentRequest.setWithParent(true);
             poJSON = loPaymentRequest.CancelPRFTransaction("Replenishement Request Cancellation");
-            if (isJSONSuccess(poJSON)) {
+            if (!isJSONSuccess(poJSON)) {
                 return poJSON;
             }
         }

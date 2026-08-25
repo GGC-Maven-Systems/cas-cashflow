@@ -2,8 +2,6 @@
 import org.guanzon.appdriver.base.GRiderCAS;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
-import org.guanzon.cas.purchasing.controller.PurchaseOrderReceiving;
-import org.guanzon.cas.purchasing.services.PurchaseOrderReceivingControllers;
 
 import org.h2.tools.RunScript;
 import org.json.simple.JSONObject;
@@ -24,11 +22,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.script.ScriptException;
 import org.guanzon.appdriver.base.SQLUtil;
 import org.guanzon.appdriver.constant.Logical;
-import org.guanzon.cas.purchasing.status.PurchaseOrderReceivingStatus;
-import org.json.simple.JSONArray;
 import org.json.simple.parser.ParseException;
 import ph.com.guanzongroup.cas.cashflow.ReplenishmentRequest;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Cash_Fund_Ledger;
@@ -48,7 +43,7 @@ public class ReplenishmentRequestTest {
     private static String psCategorCd = "0000007";
     private String psTransNo = "";
     private String psCashFund = "GCO126000000002";
-    private String psPettyCash = "GCO1026";
+    private String psPettyCash = "0000004";
 
     @BeforeClass
     public static void setUpClass() throws GuanzonException, SQLException, IOException {
@@ -157,7 +152,9 @@ public class ReplenishmentRequestTest {
         schemaScripts.add("pettycash_ledger_schema");
         schemaScripts.add("replenishment_request_schema");
         schemaScripts.add("payment_request_master_schema");
+        schemaScripts.add("payment_request_detail_schema");
         schemaScripts.add("client_master_schema");
+        schemaScripts.add("payee_schema");
 
 
         dataScripts.add("industry_data");
@@ -167,14 +164,15 @@ public class ReplenishmentRequestTest {
         dataScripts.add("department_data");
         dataScripts.add("parameter_status_history_data");
 
-
         dataScripts.add("cashfund_data");
         dataScripts.add("cashfund_ledger_data");
         dataScripts.add("pettycash_data");
         dataScripts.add("pettycash_ledger_data");
         dataScripts.add("replenishment_request_data");
         dataScripts.add("payment_request_master_data");
+        dataScripts.add("payment_request_detail_data");
         dataScripts.add("client_master_data");
+        dataScripts.add("payee_data");
 
         for (String schema : schemaScripts) {
             try (FileReader schemaReader = new FileReader("test-data/" + schema + ".sql")) {
@@ -349,6 +347,23 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            //Set back to APPROVED
+            loJSON = poController.OpenRecord(psTransNo);
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.updateRecord();
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.getModel().setTransactionStatus(ReplenishmentRequestStatus.APPROVED); 
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.SaveRecord();
+            Assert.assertEquals("success", loJSON.get("result"));
+            
+            loJSON = poController.OpenRecord(psTransNo);
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.PostRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+            
             
         } catch (CloneNotSupportedException | SQLException | GuanzonException | ParseException ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
@@ -473,6 +488,23 @@ public class ReplenishmentRequestTest {
             loJSON = poController.CancelRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
+            //Set back to APPROVED
+            loJSON = poController.OpenRecord(psTransNo);
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.updateRecord();
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.getModel().setTransactionStatus(ReplenishmentRequestStatus.APPROVED); 
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.SaveRecord();
+            Assert.assertEquals("success", loJSON.get("result"));
+            
+            loJSON = poController.OpenRecord(psTransNo);
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.PostRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+            
         } catch (CloneNotSupportedException | SQLException | GuanzonException | ParseException ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
             Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
@@ -490,6 +522,10 @@ public class ReplenishmentRequestTest {
             loJSON = poController.loadTransactionList("", "");
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
+            
+            for(int lnCtr = 0; lnCtr < poController.getCashFundLedgerListCount(); lnCtr++){
+                System.out.println("Transaction No : " + poController.TransactionList(lnCtr).getTransactionNo());
+            }
             
         } catch (SQLException | GuanzonException  ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
