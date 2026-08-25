@@ -95,12 +95,12 @@ public class Model_Replenishment_Request extends Model {
     }
     
 
-    public JSONObject setCashFundId(String cashFundId) {
-        return setValue("sCashFIDx", cashFundId);
+    public JSONObject setFundId(String cashFundId) {
+        return setValue("sFundIdxx", cashFundId);
     }
 
-    public String getCashFundId() {
-        return (String) getValue("sCashFIDx");
+    public String getFundId() {
+        return (String) getValue("sFundIdxx");
     }
 
     public JSONObject setFundType(String fundType) {
@@ -109,6 +109,14 @@ public class Model_Replenishment_Request extends Model {
 
     public String getFundType() {
         return (String) getValue("cFundType");
+    }
+
+    public JSONObject setRemarks(String remarks) {
+        return setValue("sRemarksx", remarks);
+    }
+
+    public String getRemarks() {
+        return (String) getValue("sRemarksx");
     }
     
     public JSONObject setTransactionStatus(String transactonStatus) {
@@ -164,12 +172,12 @@ public class Model_Replenishment_Request extends Model {
 
     //reference object models
     public Model_Cash_Fund CashFund() throws SQLException, GuanzonException {
-        if (!"".equals((String) getValue("sCashFIDx"))) {
+        if (!"".equals((String) getValue("sFundIdxx"))) {
             if (poCashFund.getEditMode() == EditMode.READY
-                    && poCashFund.getCashFundId().equals((String) getValue("sCashFIDx"))) {
+                    && poCashFund.getCashFundId().equals((String) getValue("sFundIdxx"))) {
                 return poCashFund;
             } else {
-                poJSON = poCashFund.openRecord((String) getValue("sCashFIDx"));
+                poJSON = poCashFund.openRecord((String) getValue("sFundIdxx"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
                     return poCashFund;
@@ -185,12 +193,12 @@ public class Model_Replenishment_Request extends Model {
     }
     
     public Model_PettyCash PettyCash() throws SQLException, GuanzonException {
-        if (!"".equals((String) getValue("sFundIdxxx"))) {
+        if (!"".equals((String) getValue("sFundIdxx"))) {
             if (poPettyCash.getEditMode() == EditMode.READY
-                    && poPettyCash.getPettyId().equals((String) getValue("sFundIdxxx"))) {
+                    && poPettyCash.getPettyId().equals((String) getValue("sFundIdxx"))) {
                 return poPettyCash;
             } else {
-                poJSON = poPettyCash.openRecord((String) getValue("sFundIdxxx"));
+                poJSON = poPettyCash.openRecord((String) getValue("sFundIdxx"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
                     return poPettyCash;
@@ -207,11 +215,11 @@ public class Model_Replenishment_Request extends Model {
 
     public Model_Industry Industry() throws SQLException, GuanzonException {
         if (Logical.YES.equals((String) getValue("cFundType"))) {
-            if (!"".equals((String) getValue("sFundIdxxx")) && (String) getValue("sFundIdxxx") != null) {
+            if (!"".equals((String) getValue("sFundIdxx")) && (String) getValue("sFundIdxx") != null) {
                 psIndustry = PettyCash().getIndustryId();
             }
         } else {
-            if (!"".equals((String) getValue("sFundIdxxx"))  && (String) getValue("sFundIdxxx") != null) {
+            if (!"".equals((String) getValue("sFundIdxx"))  && (String) getValue("sFundIdxx") != null) {
                 psIndustry = CashFund().getIndustryId();
             }
         }
@@ -238,11 +246,11 @@ public class Model_Replenishment_Request extends Model {
 
     public Model_Company Company() throws SQLException, GuanzonException {
         if (Logical.YES.equals((String) getValue("cFundType"))) {
-            if (!"".equals((String) getValue("sFundIdxxx")) && (String) getValue("sFundIdxxx") != null) {
+            if (!"".equals((String) getValue("sFundIdxx")) && (String) getValue("sFundIdxx") != null) {
                 psCompany = PettyCash().getCompanyId();
             }
         } else {
-            if (!"".equals((String) getValue("sFundIdxxx"))  && (String) getValue("sFundIdxxx") != null) {
+            if (!"".equals((String) getValue("sFundIdxx"))  && (String) getValue("sFundIdxx") != null) {
                 psCompany = CashFund().getCompanyId();
             }
         }

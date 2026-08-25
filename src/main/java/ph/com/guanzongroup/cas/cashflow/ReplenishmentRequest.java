@@ -464,13 +464,13 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
 
-        if (poModel.getCashFundId() == null || "".equals(poModel.getCashFundId())) {
-            poJSON = setJSON("error", "Cash fund ID must not be empty.");
+        if (poModel.getFundType() == null || "".equals(poModel.getFundType())) {
+            poJSON = setJSON("error", "Fund type must not be empty.");
             return poJSON;
         }
 
-        if (poModel.getFundType() == null || "".equals(poModel.getFundType())) {
-            poJSON = setJSON("error", "Fund type must not be empty.");
+        if (poModel.getFundId() == null || "".equals(poModel.getFundId())) {
+            poJSON = setJSON("error", "Cash fund ID must not be empty.");
             return poJSON;
         }
 
@@ -511,13 +511,13 @@ public class ReplenishmentRequest extends Parameter {
         String lsCondition = "";
         
         if(psCompanyId != null && !"".equals(psCompanyId)){
-            lsCondition = " AND a.sCompnyID = " + SQLUtil.toSQL(psCompanyId);
+            lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
         }
         if(psIndustryId != null && !"".equals(psIndustryId)){
             if(lsCondition.isEmpty()){
-                lsCondition = " AND a.sIndstCdx = " + SQLUtil.toSQL(psIndustryId);
+                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
             } else {
-                lsCondition = lsCondition + " AND a.sIndstCdx = " + SQLUtil.toSQL(psIndustryId);
+                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
             }
         }
         
@@ -529,9 +529,9 @@ public class ReplenishmentRequest extends Parameter {
         poJSON = ShowDialogFX.Search(poGRider,
                 lsSQL,
                 value,
-                "ID»Description»Branch»Department»Custodian",
-                "sCashFIDx»sCashFDsc»xBranchNm»xDeptName»xCustdian",
-                "a.sCashFIDx»a.sCashFDsc»IFNULL(d.sBranchNm, '')»IFNULL(e.sDeptName, '')»f.sCompnyNm",
+                "ID»Date»Fund Type»Description",
+                "sTransNox»dTransact»sFundType»IF(a.cFundType = '1',b.sCashFDsc, c.sPettyDsc)",
+                "a.sTransNox»a.dTransact»IF(a.cFundType = '1','CASH FUND', 'PETTY CASH')»IF(a.cFundType = '1',b.sCashFDsc, c.sPettyDsc)",
                 byCode ? 0 : 1);
 
         if (poJSON != null) {
@@ -573,7 +573,7 @@ public class ReplenishmentRequest extends Parameter {
 
                 poJSON = loCashFund.searchRecord(value, byCode);
                 if (isJSONSuccess(poJSON)) {
-                    getModel().setCashFundId(loCashFund.getModel().getCashFundId());
+                    getModel().setFundId(loCashFund.getModel().getCashFundId());
                 }
             } else {
                 PettyCash loPettyCash = loController.PettyCash();
@@ -585,7 +585,7 @@ public class ReplenishmentRequest extends Parameter {
 
                 poJSON = loPettyCash.searchRecord(value, byCode);
                 if (isJSONSuccess(poJSON)) {
-                    getModel().setCashFundId(loPettyCash.getModel().getPettyId());
+                    getModel().setFundId(loPettyCash.getModel().getPettyId());
                 }
             }
         } else {
@@ -675,14 +675,22 @@ public class ReplenishmentRequest extends Parameter {
         if (fsFund == null) { fsFund = ""; }
         if (fsTransactionNo == null) { fsTransactionNo = ""; }
         
-        String lsSQL = MiscUtil.addCondition(getSQ_Browse(),
-                " ( b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " OR c.sCompnyID = " + SQLUtil.toSQL(psCompanyId)
-                + " ) AND ( b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " OR c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId)
-                + " ) AND ( b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + " OR c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode())
-                + " ) AND ( b.sDescript LIKE " + SQLUtil.toSQL("%" + fsFund + "%") + " OR c.sDescript LIKE " + SQLUtil.toSQL("%" + fsFund + "%")
-                + " ) AND a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%")
-            );
-        //TODO filter by department
+        String lsCondition = "";
+        if(psCompanyId != null && !"".equals(psCompanyId)){
+            lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
+        }
+        if(psIndustryId != null && !"".equals(psIndustryId)){
+            if(lsCondition.isEmpty()){
+                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+            } else {
+                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+            }
+        }
+        
+        String lsSQL = MiscUtil.addCondition(getSQ_Browse(), " a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%"));
+        lsSQL = lsSQL + lsCondition;
+        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + " ,c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) +  ")";
+        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sCashFDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + " ,c.sPettyDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") +  ")";
         
         lsSQL = lsSQL + " ORDER BY a.dTransact, a.sTransNox ASC ";
         System.out.println("Executing SQL: " + lsSQL);
@@ -715,7 +723,7 @@ public class ReplenishmentRequest extends Parameter {
     public JSONObject loadLedger(boolean fbIsUI) throws SQLException, GuanzonException {
         poJSON = new JSONObject();
         
-        if(getModel().getCashFundId() == null || "".equals(getModel().getCashFundId())){
+        if(getModel().getFundId() == null || "".equals(getModel().getFundId())){
             poJSON = setJSON("error", "Fund cannot be empty.");
             return poJSON;
         }
@@ -742,7 +750,7 @@ public class ReplenishmentRequest extends Parameter {
         if(Logical.YES.equals(getModel().getFundType())){
             if(fbIsUI){
                 lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
-                    " sCashFIDx = " + SQLUtil.toSQL(getModel().getCashFundId())
+                    " sCashFIDx = " + SQLUtil.toSQL(getModel().getFundId())
                     + " AND cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
                     + " AND (sBatchNox IS NULL OR sBatchNox = '') "
                 );
@@ -780,7 +788,7 @@ public class ReplenishmentRequest extends Parameter {
         } else {
             if(fbIsUI){
                 lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).PettyCashFundLedger()),
-                    " sPettyIDx = " + SQLUtil.toSQL(getModel().getCashFundId())
+                    " sPettyIDx = " + SQLUtil.toSQL(getModel().getFundId())
                     + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
                     + " AND (sBatchNox IS NULL OR sBatchNox = '') "
                 );
@@ -985,18 +993,18 @@ public class ReplenishmentRequest extends Parameter {
     *
     * @return String representing the transaction status (e.g., "OPEN", "ACTIVE", "DEACTIVATED", or "UNKNOWN")
     */
-    public String getStatus(){
-        switch(poModel.getTransactionStatus()){
+    public String getStatus(String fsStatus){
+        switch(fsStatus){
             case ReplenishmentRequestStatus.OPEN:
-                return "OPEN";
+                return "Open";
             case ReplenishmentRequestStatus.APPROVED:
-                return "APPPROVED";
+                return "Approved";
             case ReplenishmentRequestStatus.POSTED:
-                return "POSTED";
+                return "Posted";
             case ReplenishmentRequestStatus.CANCELLED:
-                return "CANCELLED";
+                return "Cancelled";
             case ReplenishmentRequestStatus.VOID:
-                return "VOID";
+                return "Void";
             default:
                 return "UNKNOWN";
         }
@@ -1333,33 +1341,24 @@ public class ReplenishmentRequest extends Parameter {
             lsCondition = "a.cTranStat = " + SQLUtil.toSQL(psRecdStat);
         }
 
-        String lsSQL = " SELECT         "
-                    + "    a.sCashFIDx "
-                    + "  , a.sBranchCD "
-                    + "  , a.sDeptIDxx "
-                    + "  , a.sCompnyID "
-                    + "  , a.sIndstCdx "
-                    + "  , a.sCashFDsc "
-                    + "  , a.nBalancex "
-                    + "  , a.nBegBalxx "
-                    + "  , a.dBegDatex "
-                    + "  , a.sCashFMgr "
-                    + "  , a.nLedgerNo "
-                    + "  , a.dLastTran "
-                    + "  , a.cTranStat "
-                    + "  , a.sModified "
-                    + "  , a.dModified "
-                    + "  , b.sDescript as xIndustry "     
-                    + "  , c.sCompnyNm as xCompanyx "     
-                    + "  , d.sBranchNm AS xBranchNm "     
-                    + "  , e.sDeptName AS xDeptName "     
-                    + "  , f.sCompnyNm AS xCustdian "     
-                    + " FROM CashFund a             "
-                    + " LEFT JOIN Industry b ON b.sIndstCdx = a.sIndstCdx      "
-                    + " LEFT JOIN Company c ON c.sCompnyID = a.sCompnyID       "
-                    + " LEFT JOIN Branch d ON d.sBranchCd = a.sBranchCD        "
-                    + " LEFT JOIN Department e ON e.sDeptIDxx = a.sDeptIDxx    "
-                    + " LEFT JOIN Client_Master f ON f.sClientID = a.sCashFMgr ";
+        String lsSQL = "SELECT " +
+                        "  a.sTransNox, " +
+                        "  a.dTransact, " +
+                        "  a.cFundType, " +
+                        "  a.sFundIdxx, " +
+                        "  a.sRemarksx, " +
+                        "  a.nTranAmtx, " +
+                        "  a.cTranStat, " +
+                        "  a.sModified, " +
+                        "  a.dModified, " +
+                        "  b.sCashFDsc, " +
+                        "  c.sPettyDsc," +
+                        "  IF(a.cFundType = '1','CASH FUND', 'PETTY CASH') AS sFundType," +
+                        "  IF(a.cFundType = '1',b.sIndstCdx, c.sIndstCdx) AS sIndstCdx," +
+                        "  IF(a.cFundType = '1',b.sCompnyID, c.sCompnyID) AS sCompnyID," +
+                        "FROM Replenishment_Request a " +
+                        "LEFT JOIN CashFund b ON b.sCashFIDx = a.sFundIdxxx " +
+                        "LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxxx ";
 
         return MiscUtil.addCondition(lsSQL, lsCondition);
     }

@@ -314,7 +314,7 @@ public class ReplenishmentRequestTest {
             
             loJSON = poController.getModel().setFundType(Logical.YES);
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.getModel().setCashFundId(psCashFund);
+            loJSON = poController.getModel().setFundId(psCashFund);
             Assert.assertEquals("success", loJSON.get("result"));
             
             //load ledger
@@ -438,7 +438,7 @@ public class ReplenishmentRequestTest {
             
             loJSON = poController.getModel().setFundType(Logical.NO);
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.getModel().setCashFundId(psPettyCash);
+            loJSON = poController.getModel().setFundId(psPettyCash);
             Assert.assertEquals("success", loJSON.get("result"));
             
             //load ledger
@@ -608,7 +608,7 @@ public class ReplenishmentRequestTest {
             
             poController.getModel().setTransactionNo(psTransNo);
             poController.getModel().setFundType(Logical.YES);
-            poController.getModel().setCashFundId(psCashFund);
+            poController.getModel().setFundId(psCashFund);
             loJSON = poController.isEntryOkay();
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
