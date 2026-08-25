@@ -1,5 +1,7 @@
 package ph.com.guanzongroup.cas.cashflow;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
@@ -434,6 +436,51 @@ public class PaymentRequest extends Transaction {
             poJSON.put("message", "Transaction cancellation request submitted successfully.");
         }
 
+        return poJSON;
+    }
+    
+    /**
+     * Cancels the current payment request Arsiela 08-22-2026 Used for Replenishment Request
+     *
+     * @param remarks Remarks for status history.
+     * @return JSON result containing status and message.
+     * @throws ParseException If date parsing fails.
+     * @throws SQLException If a database access error occurs.
+     * @throws GuanzonException If model operations fail.
+     * @throws CloneNotSupportedException If detail cloning fails.
+     */
+    public JSONObject CancelPRFTransaction(String remarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException {
+        poJSON = new JSONObject();
+
+        String lsStatus = PaymentRequestStatus.CANCELLED;
+        boolean lbConfirm = true;
+
+        if (getEditMode() != EditMode.READY) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "No transacton was loaded.");
+            return poJSON;
+        }
+
+        if (lsStatus.equals((String) poMaster.getValue("cTranStat"))) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "Transaction was already cancelled.");
+            return poJSON;
+        }
+
+        poJSON = isEntryOkay(PaymentRequestStatus.CANCELLED);
+        if (!"success".equals((String) poJSON.get("result"))) {
+            return poJSON;
+        }
+        
+        poJSON = statusChange(poMaster.getTable(), (String) poMaster.getValue("sTransNox"), remarks, lsStatus, !lbConfirm, true);
+        if (!"success".equals((String) poJSON.get("result"))) {
+            poGRider.rollbackTrans();
+            return poJSON;
+        }
+
+        poJSON = new JSONObject();
+        poJSON.put("result", "success");
+        poJSON.put("message", "Transaction cancelled successfully.");
         return poJSON;
     }
 
@@ -875,105 +922,158 @@ public class PaymentRequest extends Transaction {
         String lsRecurringNo = "";
         boolean lbExist = false;
         boolean lbAddedNew = false;
-        ArrayList<String> laTransNo = new ArrayList<>(Arrays.asList(fsRecurringTransNo.split(",")));
-        for(int lnCtr = 0; lnCtr < laTransNo.size(); lnCtr++){
-            Model_Recurring_Expense_Payment_Monitor loObject = new CashflowModels(poGRider).Recurring_Expense_Payment_Monitor();
-            poJSON = loObject.openRecord(laTransNo.get(lnCtr));
-            if ("error".equals((String) poJSON.get("result"))) {
-                return poJSON;
-            }
-            lsRecurringNo = laTransNo.get(lnCtr);
-            
-            //Check Existing Recurring No
-            for(int lnRow = 0; lnRow < getDetailCount(); lnRow++){
-                if(Detail(lnRow).getParticularID() != null && !"".equals(Detail(lnRow).getParticularID())){
-                    if(Master().getPayeeID() != null && !"".equals(Master().getPayeeID())){
-                        if(Detail(lnRow).getRecurringNo() != null && !"".equals(Detail(lnRow).getRecurringNo())){
-                            if(!Master().getPayeeID().equals(Detail(lnRow).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getPayeeId())){
-                                lnError = 1; //Recurring schedule payee must be equal to the payment request payee.
-                                break;
-                            }
-                            if(Detail(lnRow).RecurringExpensePaymentMonitor().getBillMonth() != loObject.getBillMonth()){
-                                lnError = 2; //Bill month must be the same with the existing recurring expense in PRF detail.
-                                break;
-                            }
-                            if(Detail(lnRow).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getDueDay() != loObject.RecurringExpenseSchedule().getDueDay()){
-                                lnError = 3; //Due day must be the same with the existing recurring expense in PRF detail.
-                                break;
-                            }
-                        } else {
-                            if(!PaymentRequestStaticData.recurring_expense_payment.equals(Master().getSourceCode())){    
-                                lnError = 4; //Recurring expense schedule cannot be mix with non recurring expense transaction source.
-                                break;
-                            }
-                            if(!Master().getPayeeID().equals(loObject.RecurringExpenseSchedule().getPayeeId())){
-                                lnError = 1; //Recurring schedule payee must be equal to the payment request payee.
-                            }
-                            if(Master().getSourceNo() != null && !"".equals(Master().getSourceNo())){
-                                if(Master().RecurringExpensePaymentMonitor().getBillMonth() != loObject.getBillMonth()){
-                                    lnError = 2; //Bill month must be the same with the existing recurring expense in PRF detail.
+        
+        //Added object mapper for new query procedure of recurring expense monitor; previous code method was conflict for exceeding of string value convert it on json object for the selected recurring expense based on group by query Arsiela 08-25-2026 1:21 PM
+        ObjectMapper mapper = new ObjectMapper();
+
+        Map<String, Object> json;
+        try {
+            json = mapper.readValue(fsRecurringTransNo, Map.class);
+        } catch (JsonProcessingException ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+            poJSON.put("result", "error");
+            poJSON.put("message", MiscUtil.getException(ex));
+            return poJSON;
+        }
+
+        String lsCompanyId = (String) json.get("sCompnyID");
+        String lsPayeeId = (String) json.get("sPayeeIDx");
+        String lsBillDays = String.valueOf((Integer) json.get("nBillDayx"));
+        String lsAccountable = (String) json.get("cAccntble");
+        
+        String lsSQL =  " SELECT " +
+                        " a.sTransNox " +
+                        " FROM Recurring_Expense_Payment_Monitor a " +
+                        " LEFT JOIN Recurring_Expense_Schedule b ON a.sRecurrNo = b.sRecurrNo AND b.cRecdStat =  '1' " +
+                        " WHERE " +
+                        " (a.sBatchNox IS NULL OR TRIM(a.sBatchNox) = '') " +
+                        " AND b.cExcluded = '0' " +
+                        " AND b.sCompnyID = " + SQLUtil.toSQL(lsCompanyId) +
+                        " AND b.sPayeeIDx = " + SQLUtil.toSQL(lsPayeeId) +
+                        " AND b.nBillDayx = " + SQLUtil.toSQL(lsBillDays) +
+                        " AND b.cAccntble = " + SQLUtil.toSQL(lsAccountable) ;
+        
+        if(poGRider.isMainOffice()){
+            lsSQL = lsSQL + " AND b.cAccntble != " + SQLUtil.toSQL(Logical.YES); //Except Accountable is equal to Branch : 1
+        } else {
+            lsSQL = lsSQL + " AND b.sBranchCd = "  + SQLUtil.toSQL(poGRider.getBranchCode()); //For Specific Branch Only
+        }
+        
+        System.out.println("Executing SQL: " + lsSQL);
+        ResultSet loRS = poGRider.executeQuery(lsSQL);
+        if (MiscUtil.RecordCount(loRS) <= 0) {
+            poJSON.put("result", "error");
+            poJSON.put("message", "No recurring expense found.");
+            return poJSON;
+        }
+        
+        while (loRS.next()) {
+            lsRecurringNo = loRS.getString("sTransNox");
+            if(lsRecurringNo != null && !"".equals(lsRecurringNo)){
+    //        ArrayList<String> laTransNo = new ArrayList<>(Arrays.asList(fsRecurringTransNo.split(",")));
+//            for(int lnCtr = 0; lnCtr < laTransNo.size(); lnCtr++){
+                Model_Recurring_Expense_Payment_Monitor loObject = new CashflowModels(poGRider).Recurring_Expense_Payment_Monitor();
+                poJSON = loObject.openRecord(lsRecurringNo);
+                if ("error".equals((String) poJSON.get("result"))) {
+                    poJSON.put("message", "System Error while loading Recurring Expense Monitor <"+ lsRecurringNo + ">.\nContact system administrator.\n"+
+                                    (String) poJSON.get("message"));
+                    return poJSON;
+                }
+//                lsRecurringNo = laTransNo.get(lnCtr);
+
+                //Check Existing Recurring No
+                for(int lnRow = 0; lnRow < getDetailCount(); lnRow++){
+                    if(Detail(lnRow).getParticularID() != null && !"".equals(Detail(lnRow).getParticularID())){
+                        if(Master().getPayeeID() != null && !"".equals(Master().getPayeeID())){
+                            if(Detail(lnRow).getRecurringNo() != null && !"".equals(Detail(lnRow).getRecurringNo())){
+                                if(!Master().getPayeeID().equals(Detail(lnRow).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getPayeeId())){
+                                    lnError = 1; //Recurring schedule payee must be equal to the payment request payee.
+                                    break;
                                 }
-                                if(Master().RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getDueDay() != loObject.RecurringExpenseSchedule().getDueDay()){
+                                if(Detail(lnRow).RecurringExpensePaymentMonitor().getBillMonth() != loObject.getBillMonth()){
+                                    lnError = 2; //Bill month must be the same with the existing recurring expense in PRF detail.
+                                    break;
+                                }
+                                if(Detail(lnRow).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getDueDay() != loObject.RecurringExpenseSchedule().getDueDay()){
                                     lnError = 3; //Due day must be the same with the existing recurring expense in PRF detail.
                                     break;
+                                }
+                            } else {
+                                if(!PaymentRequestStaticData.recurring_expense_payment.equals(Master().getSourceCode())){    
+                                    lnError = 4; //Recurring expense schedule cannot be mix with non recurring expense transaction source.
+                                    break;
+                                }
+                                if(!Master().getPayeeID().equals(loObject.RecurringExpenseSchedule().getPayeeId())){
+                                    lnError = 1; //Recurring schedule payee must be equal to the payment request payee.
+                                }
+                                if(Master().getSourceNo() != null && !"".equals(Master().getSourceNo())){
+                                    if(Master().RecurringExpensePaymentMonitor().getBillMonth() != loObject.getBillMonth()){
+                                        lnError = 2; //Bill month must be the same with the existing recurring expense in PRF detail.
+                                    }
+                                    if(Master().RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getDueDay() != loObject.RecurringExpenseSchedule().getDueDay()){
+                                        lnError = 3; //Due day must be the same with the existing recurring expense in PRF detail.
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
+
+                    lbExist = Detail(lnRow).getRecurringNo().equals(lsRecurringNo) || Master().getSourceNo().equals(lsRecurringNo);
+                    if(lbExist){
+                        if(!Detail(lnRow).isReverse()){
+                            Detail(lnRow).isReverse(true);
+                            lbAddedNew = true;
+                        }
+                        break;
+                    } 
                 }
-                
-                lbExist = Detail(lnRow).getRecurringNo().equals(lsRecurringNo) || Master().getSourceNo().equals(lsRecurringNo);
-                if(lbExist){
-                    if(!Detail(lnRow).isReverse()){
-                        Detail(lnRow).isReverse(true);
-                        lbAddedNew = true;
+
+                //Check if there's a error match
+                switch(lnError){
+                    case 1:
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Recurring schedule payee must be equal to the payment request payee.");
+                        return poJSON;
+                    case 2:
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Bill month must be the same with the existing recurring expense in PRF detail.");
+                        return poJSON;
+                    case 3:
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Due day must be the same with the existing recurring expense in PRF detail.");
+                        return poJSON;
+                    case 4:
+                        poJSON.put("result", "error");
+                        poJSON.put("message", "Recurring expense schedule cannot be mix with non recurring expense transaction source.");
+                        return poJSON;
+                }
+
+                if(!lbExist){
+                    AddDetail();
+                    Detail(getDetailCount() - 1).isReverse(true);
+                    Detail(getDetailCount() - 1).setRecurringNo(lsRecurringNo);
+                    Detail(getDetailCount() - 1).setParticularID(
+                    Detail(getDetailCount() - 1).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().RecurringExpense().getParticularId());
+                    Detail(getDetailCount() - 1).setAmount(Detail(getDetailCount() - 1).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getAmount());
+                    Master().setPayeeID(Detail(getDetailCount() - 1).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getPayeeId());
+
+                    if(getDetailCount() <= 1){
+                        Master().setSource(lsRecurringNo);
+                        Master().setSourceCode("REPM");
+                    } else {
+                        Master().setSource("");
+                        Master().setSourceCode("");
                     }
-                    break;
-                } 
-            }
-            
-            //Check if there's a error match
-            switch(lnError){
-                case 1:
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Recurring schedule payee must be equal to the payment request payee.");
-                    return poJSON;
-                case 2:
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Bill month must be the same with the existing recurring expense in PRF detail.");
-                    return poJSON;
-                case 3:
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Due day must be the same with the existing recurring expense in PRF detail.");
-                    return poJSON;
-                case 4:
-                    poJSON.put("result", "error");
-                    poJSON.put("message", "Recurring expense schedule cannot be mix with non recurring expense transaction source.");
-                    return poJSON;
-            }
-            
-            if(!lbExist){
-                AddDetail();
-                Detail(getDetailCount() - 1).isReverse(true);
-                Detail(getDetailCount() - 1).setRecurringNo(lsRecurringNo);
-                Detail(getDetailCount() - 1).setParticularID(
-                Detail(getDetailCount() - 1).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().RecurringExpense().getParticularId());
-                Detail(getDetailCount() - 1).setAmount(Detail(getDetailCount() - 1).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getAmount());
-                Master().setPayeeID(Detail(getDetailCount() - 1).RecurringExpensePaymentMonitor().RecurringExpenseSchedule().getPayeeId());
-                
-                if(getDetailCount() <= 1){
-                    Master().setSource(lsRecurringNo);
-                    Master().setSourceCode("REPM");
-                } else {
-                    Master().setSource("");
-                    Master().setSourceCode("");
+
+                    lbAddedNew = true;
                 }
-                
-                lbAddedNew = true;
+
+                lbExist = false;//Set false by default
+//            }
             }
-            
-            lbExist = false;//Set false by default
         }
+        MiscUtil.close(loRS);
         
         if(!lbAddedNew){
             poJSON.put("result", "error");
