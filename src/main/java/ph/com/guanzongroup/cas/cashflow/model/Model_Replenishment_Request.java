@@ -262,7 +262,7 @@ public class Model_Replenishment_Request extends Model {
             } else {
                 poJSON = poCompany.openRecord(psCompany);
 
-                if ("success".equals(psCompany)) {
+                if ("success".equals((String) poJSON.get("result"))) {
                     return poCompany;
                 } else {
                     poCompany.initialize();
