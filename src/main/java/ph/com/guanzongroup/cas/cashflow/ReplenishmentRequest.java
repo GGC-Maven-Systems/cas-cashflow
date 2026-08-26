@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Level;
@@ -908,6 +909,7 @@ public class ReplenishmentRequest extends Parameter {
         
         paLoadCashFundLedger = new ArrayList<>();
         paLoadPettyCashLedger = new ArrayList<>();
+        boolean lbAdded = false;
         ResultSet loRS;
         String lsSQL = "";
         if(Logical.YES.equals(getModel().getFundType())){
@@ -937,11 +939,14 @@ public class ReplenishmentRequest extends Parameter {
                 poJSON = loObject.openRecord(loRS.getString("sCashFIDx"),loRS.getString("sSourceCD"),loRS.getString("sSourceNo"));
                 if (isJSONSuccess(poJSON)) {
                     if(fbIsUI){
-                        if(!paCashFundLedger.contains((Model_Cash_Fund_Ledger) loObject)){
+                        if(!checkExistCashFundLedger(paCashFundLedger, (Model_Cash_Fund_Ledger) loObject)){
                             paLoadCashFundLedger.add((Model_Cash_Fund_Ledger) loObject);
+                            if(!lbAdded){
+                                lbAdded = true;
+                            }
                         }
                     } else {
-                        if(!paCashFundLedger.contains((Model_Cash_Fund_Ledger) loObject)){
+                        if(!checkExistCashFundLedger(paCashFundLedger, (Model_Cash_Fund_Ledger) loObject)){
                             paCashFundLedger.add((Model_Cash_Fund_Ledger) loObject);
                         }
                     }
@@ -974,11 +979,14 @@ public class ReplenishmentRequest extends Parameter {
                 poJSON = loObject.openRecord(loRS.getString("sPettyIDx"),loRS.getString("sSourceCD"),loRS.getString("sSourceNo"));
                 if (isJSONSuccess(poJSON)) {
                     if(fbIsUI){
-                        if(!paPettyCashLedger.contains((Model_PettyCashLedger) loObject)){ 
+                        if(!checkExistPettyCashLedger(paPettyCashLedger, (Model_PettyCashLedger) loObject)){
                             paLoadPettyCashLedger.add((Model_PettyCashLedger) loObject);
+                            if(!lbAdded){
+                                lbAdded = true;
+                            }
                         }
                     } else {
-                        if(!paPettyCashLedger.contains((Model_PettyCashLedger) loObject)){ 
+                        if(!checkExistPettyCashLedger(paPettyCashLedger, (Model_PettyCashLedger) loObject)){
                             paPettyCashLedger.add((Model_PettyCashLedger) loObject);
                         }
                     }
@@ -987,7 +995,11 @@ public class ReplenishmentRequest extends Parameter {
             MiscUtil.close(loRS);
         }
         
-        poJSON = setJSON("success", "success");
+        if(lbAdded){
+            poJSON = setJSON("success", "success");
+        } else {
+            poJSON = setJSON("error", "No remaining ledger to load.");
+        }
         return poJSON;
     }
     /**
@@ -1088,20 +1100,19 @@ public class ReplenishmentRequest extends Parameter {
             paPettyCashLedger = new ArrayList<>();
         }
         for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
-            if(!paPettyCashLedger.contains(faModel.get(lnCtr))){ 
+            if(!checkExistPettyCashLedger(paPettyCashLedger, faModel.get(lnCtr) )){
                 paPettyCashLedger.add(faModel.get(lnCtr));
-//                if(faModel.get(lnCtr).getEditMode() != EditMode.UPDATE){
-//                    poJSON = paPettyCashLedger.get(paPettyCashLedger.size()-1).updateRecord();
-//                    if (!isJSONSuccess(poJSON)) {
-//                        return poJSON;
-//                    }
-//                }
             }
-            if(paRemovedPettyCashLedger.contains(faModel.get(lnCtr))){ 
-                paRemovedPettyCashLedger.remove(faModel.get(lnCtr));
+            
+            if(!checkExistPettyCashLedger(paRemovedPettyCashLedger, faModel.get(lnCtr) )){
+                paRemovedPettyCashLedger.add(faModel.get(lnCtr));
             }
         }
         
+        paPettyCashLedger.sort(
+            Comparator.comparing(Model_PettyCashLedger::getTransactionDate)
+                      .thenComparing(Model_PettyCashLedger::getLedgerNo)
+        );
         computeFields();
         poJSON = setJSON("success", "success");
         return poJSON;
@@ -1115,23 +1126,56 @@ public class ReplenishmentRequest extends Parameter {
         if(paCashFundLedger == null){
             paCashFundLedger = new ArrayList<>();
         }
+        
         for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
-            if(!paCashFundLedger.contains(faModel.get(lnCtr))){ 
+            if(!checkExistCashFundLedger(paCashFundLedger, faModel.get(lnCtr) )){
                 paCashFundLedger.add(faModel.get(lnCtr));
-//                if(faModel.get(lnCtr).getEditMode() != EditMode.UPDATE){
-//                    poJSON = paCashFundLedger.get(paCashFundLedger.size()-1).updateRecord();
-//                    if (!isJSONSuccess(poJSON)) {
-//                        return poJSON;
-//                    }
-//                }
             }
-            if(paRemovedCashFundLedger.contains(faModel.get(lnCtr))){ 
-                paRemovedCashFundLedger.remove(faModel.get(lnCtr));
+            
+            if(!checkExistCashFundLedger(paRemovedCashFundLedger, faModel.get(lnCtr) )){
+                paRemovedCashFundLedger.add(faModel.get(lnCtr));
             }
         }
+        
+        paCashFundLedger.sort(
+            Comparator.comparing(Model_Cash_Fund_Ledger::getTransactionDate)
+                      .thenComparing(Model_Cash_Fund_Ledger::getLedgerNo)
+        );
         computeFields();
         poJSON = setJSON("success", "success");
         return poJSON;
+    }
+    
+    private boolean checkExistCashFundLedger(List<Model_Cash_Fund_Ledger> faModel, Model_Cash_Fund_Ledger foModel ){
+        boolean lbExists = false;
+        for (Model_Cash_Fund_Ledger item : faModel) {
+            if (item.getCashFundId().equals(foModel.getCashFundId())) {
+                if (item.getSourceCode().equals(foModel.getSourceCode())) {
+                    if (item.getSourceNo().equals(foModel.getSourceNo())) {
+                        lbExists = true;
+                        break;
+                    }
+                }
+            }
+       }
+        
+        return lbExists;
+    }
+    
+    private boolean checkExistPettyCashLedger(List<Model_PettyCashLedger> faModel, Model_PettyCashLedger foModel ){
+        boolean lbExists = false;
+        for (Model_PettyCashLedger item : faModel) {
+            if (item.getPettyID().equals(foModel.getPettyID())) {
+                if (item.getSourceCode().equals(foModel.getSourceCode())) {
+                    if (item.getSourceNo().equals(foModel.getSourceNo())) {
+                        lbExists = true;
+                        break;
+                    }
+                }
+            }
+       }
+        
+        return lbExists;
     }
     
     public void computeFields(){
@@ -1362,6 +1406,38 @@ public class ReplenishmentRequest extends Parameter {
             poJSON.put("result", "success");
             return poJSON;
         }
+        
+        String lsPayee = "";
+        String lsFund = "";
+        String lsIndustryId = "";
+        String lsCompanyId = "";
+        String lsPayeeName = "";
+        if (Logical.YES.equals(getModel().getFundType())) {
+            lsPayee = getModel().CashFund().getCashFundManager();
+            lsFund = "Cash Fund "+ getModel().CashFund().getDescription();
+            lsIndustryId = getModel().CashFund().getIndustryId();
+            lsCompanyId = getModel().CashFund().getCompanyId();
+            lsPayeeName = getModel().CashFund().Custodian().getCompanyName();
+        } else {
+            lsPayee = getModel().PettyCash().getPettyManager();
+            lsFund = "Petty Cash"+ getModel().PettyCash().getDescription();
+            lsIndustryId = getModel().PettyCash().getIndustryId();
+            lsCompanyId = getModel().PettyCash().getCompanyId();
+            lsPayeeName = getModel().PettyCash().Custodian().getCompanyName();
+        }
+
+        Payee object = new CashflowControllers(poGRider, logwrapr).Payee();
+        object.setRecordStatus(RecordStatus.ACTIVE);
+        poJSON = object.searchPayee(lsPayee);
+        if (isJSONSuccess(poJSON)) {
+            lsPayee = (String) poJSON.get("sPayeeIDx");
+        } else {
+            lsPayee = "";
+        }
+        if(lsPayee == null || "".equals(lsPayee)){
+            poJSON = setJSON("error", "Payee configuration for custodian <" + lsPayeeName + "> has not been configured.");
+            return poJSON;
+        }
 
         try {
             System.out.println("poJSON = generatePRF()");
@@ -1373,39 +1449,6 @@ public class ReplenishmentRequest extends Parameter {
                 }
                 poJSON = loPaymentRequest.NewTransaction();
                 if (!isJSONSuccess(poJSON)) {
-                    return poJSON;
-                }
-                
-                String lsPayee = "";
-                String lsFund = "";
-                String lsIndustryId = "";
-                String lsCompanyId = "";
-                String lsPayeeName = "";
-                if (Logical.YES.equals(getModel().getFundType())) {
-                    lsPayee = getModel().CashFund().getCashFundManager();
-                    lsFund = "Cash Fund "+ getModel().CashFund().getDescription();
-                    lsIndustryId = getModel().CashFund().getIndustryId();
-                    lsCompanyId = getModel().CashFund().getCompanyId();
-                    lsPayeeName = getModel().CashFund().Custodian().getCompanyName();
-                } else {
-                    lsPayee = getModel().PettyCash().getPettyManager();
-                    lsFund = "Petty Cash"+ getModel().PettyCash().getDescription();
-                    lsIndustryId = getModel().PettyCash().getIndustryId();
-                    lsCompanyId = getModel().PettyCash().getCompanyId();
-                    lsPayeeName = getModel().PettyCash().Custodian().getCompanyName();
-                }
-
-                Payee object = new CashflowControllers(poGRider, logwrapr).Payee();
-                object.setRecordStatus(RecordStatus.ACTIVE);
-                poJSON = object.searchPayee(lsPayee);
-                if (isJSONSuccess(poJSON)) {
-                    lsPayee = (String) poJSON.get("sPayeeIDx");
-                } else {
-                    poJSON = setJSON("error", "Payee configuration for custodian <" + lsPayeeName + "> has not been configured.");
-                    return poJSON;
-                }
-                if(lsPayee == null || "".equals(lsPayee)){
-                    poJSON = setJSON("error", "Payee configuration for custodian <" + lsPayeeName + "> has not been configured.");
                     return poJSON;
                 }
                 
