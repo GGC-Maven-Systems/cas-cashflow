@@ -919,7 +919,7 @@ public class ReplenishmentRequest extends Parameter {
                 lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
                     " sCashFIDx = " + SQLUtil.toSQL(getModel().getFundId())
                     + " AND cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
-                    + " AND (sBatchNox IS NULL OR sBatchNox = '') "
+                    + " AND (sBatchNox IS NULL OR sBatchNox = '' OR sBatchNox = " + SQLUtil.toSQL(getModel().getTransactionNo()) + " ) "
                 );
             } else {
                 lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).CashFundLedger()),
@@ -941,14 +941,14 @@ public class ReplenishmentRequest extends Parameter {
                 poJSON = loObject.openRecord(loRS.getString("sCashFIDx"),loRS.getString("sSourceCD"),loRS.getString("sSourceNo"));
                 if (isJSONSuccess(poJSON)) {
                     if(fbIsUI){
-                        if(!checkExistCashFundLedger(paCashFundLedger, (Model_Cash_Fund_Ledger) loObject)){
+                        if(checkExistCashFundLedger(paCashFundLedger, (Model_Cash_Fund_Ledger) loObject) < 0){
                             paLoadCashFundLedger.add((Model_Cash_Fund_Ledger) loObject);
                             if(!lbAdded){
                                 lbAdded = true;
                             }
                         }
                     } else {
-                        if(!checkExistCashFundLedger(paCashFundLedger, (Model_Cash_Fund_Ledger) loObject)){
+                        if(checkExistCashFundLedger(paCashFundLedger, (Model_Cash_Fund_Ledger) loObject) < 0){
                             paCashFundLedger.add((Model_Cash_Fund_Ledger) loObject);
                         }
                     }
@@ -960,7 +960,7 @@ public class ReplenishmentRequest extends Parameter {
                 lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).PettyCashFundLedger()),
                     " sPettyIDx = " + SQLUtil.toSQL(getModel().getFundId())
                     + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
-                    + " AND (sBatchNox IS NULL OR sBatchNox = '') "
+                    + " AND (sBatchNox IS NULL OR sBatchNox = '' OR sBatchNox = " + SQLUtil.toSQL(getModel().getTransactionNo()) + " ) "
                 );
             } else {
                 lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(new CashflowModels(poGRider).PettyCashFundLedger()),
@@ -981,14 +981,14 @@ public class ReplenishmentRequest extends Parameter {
                 poJSON = loObject.openRecord(loRS.getString("sPettyIDx"),loRS.getString("sSourceCD"),loRS.getString("sSourceNo"));
                 if (isJSONSuccess(poJSON)) {
                     if(fbIsUI){
-                        if(!checkExistPettyCashLedger(paPettyCashLedger, (Model_PettyCashLedger) loObject)){
+                        if(checkExistPettyCashLedger(paPettyCashLedger, (Model_PettyCashLedger) loObject) < 0){
                             paLoadPettyCashLedger.add((Model_PettyCashLedger) loObject);
                             if(!lbAdded){
                                 lbAdded = true;
                             }
                         }
                     } else {
-                        if(!checkExistPettyCashLedger(paPettyCashLedger, (Model_PettyCashLedger) loObject)){
+                        if(checkExistPettyCashLedger(paPettyCashLedger, (Model_PettyCashLedger) loObject) < 0){
                             paPettyCashLedger.add((Model_PettyCashLedger) loObject);
                         }
                     }
@@ -1106,11 +1106,15 @@ public class ReplenishmentRequest extends Parameter {
             paPettyCashLedger = new ArrayList<>();
         }
         for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
-            if(!checkExistPettyCashLedger(paPettyCashLedger, faModel.get(lnCtr) )){
-                paPettyCashLedger.add(faModel.get(lnCtr));
+            Model_PettyCashLedger loModel = faModel.get(lnCtr);
+            if(checkExistPettyCashLedger(paPettyCashLedger, (Model_PettyCashLedger) loModel ) < 0){
+                paPettyCashLedger.add((Model_PettyCashLedger) loModel);
             }
             
-            paRemovedPettyCashLedger.remove(faModel.get(lnCtr));
+            int lnRow = checkExistPettyCashLedger(paRemovedPettyCashLedger, (Model_PettyCashLedger) loModel ) ;
+            if(lnRow >= 0){
+                paRemovedPettyCashLedger.remove(lnRow);
+            }
         }
         
         paPettyCashLedger.sort(
@@ -1132,11 +1136,15 @@ public class ReplenishmentRequest extends Parameter {
         }
         
         for(int lnCtr = 0; lnCtr < faModel.size(); lnCtr++){
-            if(!checkExistCashFundLedger(paCashFundLedger, faModel.get(lnCtr) )){
-                paCashFundLedger.add(faModel.get(lnCtr));
+            Model_Cash_Fund_Ledger loModel = faModel.get(lnCtr);
+            if(checkExistCashFundLedger(paCashFundLedger, (Model_Cash_Fund_Ledger) loModel ) < 0){
+                paCashFundLedger.add(loModel);
             }
             
-            paRemovedCashFundLedger.remove(faModel.get(lnCtr));
+            int lnRow = checkExistCashFundLedger(paRemovedCashFundLedger, (Model_Cash_Fund_Ledger) loModel ) ;
+            if(lnRow >= 0){
+                paRemovedCashFundLedger.remove(lnRow);
+            }
         }
         
         paCashFundLedger.sort(
@@ -1148,36 +1156,40 @@ public class ReplenishmentRequest extends Parameter {
         return poJSON;
     }
     
-    private boolean checkExistCashFundLedger(List<Model_Cash_Fund_Ledger> faModel, Model_Cash_Fund_Ledger foModel ){
-        boolean lbExists = false;
+    private int checkExistCashFundLedger(List<Model_Cash_Fund_Ledger> faModel, Model_Cash_Fund_Ledger foModel ){
+        int lnExists = -1;
+        int lnCtr = 0;
         for (Model_Cash_Fund_Ledger item : faModel) {
             if (item.getCashFundId().equals(foModel.getCashFundId())) {
                 if (item.getSourceCode().equals(foModel.getSourceCode())) {
                     if (item.getSourceNo().equals(foModel.getSourceNo())) {
-                        lbExists = true;
+                        lnExists = lnCtr;
                         break;
                     }
                 }
             }
+            lnCtr++;
        }
         
-        return lbExists;
+        return lnExists;
     }
     
-    private boolean checkExistPettyCashLedger(List<Model_PettyCashLedger> faModel, Model_PettyCashLedger foModel ){
-        boolean lbExists = false;
+    private int checkExistPettyCashLedger(List<Model_PettyCashLedger> faModel, Model_PettyCashLedger foModel ){
+        int lnExists = -1;
+        int lnCtr = 0;
         for (Model_PettyCashLedger item : faModel) {
             if (item.getPettyID().equals(foModel.getPettyID())) {
                 if (item.getSourceCode().equals(foModel.getSourceCode())) {
                     if (item.getSourceNo().equals(foModel.getSourceNo())) {
-                        lbExists = true;
+                        lnExists = lnCtr;
                         break;
                     }
                 }
             }
+            lnCtr++;
        }
         
-        return lbExists;
+        return lnExists;
     }
     
     public void computeFields(){

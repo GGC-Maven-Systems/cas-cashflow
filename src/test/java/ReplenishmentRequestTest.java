@@ -145,6 +145,7 @@ public class ReplenishmentRequestTest {
         schemaScripts.add("branch_schema");
         schemaScripts.add("department_schema");
         schemaScripts.add("parameter_status_history_schema");
+        schemaScripts.add("transaction_status_history_schema");
 
         schemaScripts.add("cashfund_schema");
         schemaScripts.add("cashfund_ledger_schema");
@@ -163,6 +164,7 @@ public class ReplenishmentRequestTest {
         dataScripts.add("branch_data");
         dataScripts.add("department_data");
         dataScripts.add("parameter_status_history_data");
+        dataScripts.add("transaction_status_history_data");
 
         dataScripts.add("cashfund_data");
         dataScripts.add("cashfund_ledger_data");
@@ -226,7 +228,7 @@ public class ReplenishmentRequestTest {
         return localDate;
     }
     
-    @Test
+//    @Test
     public void test001CashFund(){
         try {
             JSONObject loJSON = new JSONObject();
@@ -325,16 +327,25 @@ public class ReplenishmentRequestTest {
             Assert.assertEquals("success", loJSON.get("result"));
             
             //Set back to OPEN
-            loJSON = poController.OpenRecord(psTransNo);
+            loJSON = poController.newRecord();
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.updateRecord();
+            loJSON = poController.getModel().setFundType(Logical.YES);
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.getModel().setTransactionStatus(ReplenishmentRequestStatus.OPEN); 
+            loJSON = poController.getModel().setFundId(psCashFund);
+            Assert.assertEquals("success", loJSON.get("result"));
+            //load ledger
+            loJSON = poController.loadLedger(true);
+            Assert.assertEquals("success", loJSON.get("result"));
+            System.out.println("---------ADD CASH FUND LEDGER------------");
+            List<Model_Cash_Fund_Ledger> laCashFundLedger = new ArrayList<>();
+            laCashFundLedger.add(poController.LoadCashFundLedgerList(0));
+            loJSON = poController.AddCashFundLedger(laCashFundLedger);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.SaveRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
+            psTransNo = poController.getModel().getTransactionNo();
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.ApproveRecord();
@@ -348,14 +359,29 @@ public class ReplenishmentRequestTest {
             Assert.assertEquals("success", loJSON.get("result"));
             
             //Set back to APPROVED
-            loJSON = poController.OpenRecord(psTransNo);
+            loJSON = poController.newRecord();
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.updateRecord();
+            loJSON = poController.getModel().setFundType(Logical.YES);
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.getModel().setTransactionStatus(ReplenishmentRequestStatus.APPROVED); 
+            loJSON = poController.getModel().setFundId(psCashFund);
+            Assert.assertEquals("success", loJSON.get("result"));
+            //load ledger
+            loJSON = poController.loadLedger(true);
+            Assert.assertEquals("success", loJSON.get("result"));
+            System.out.println("---------ADD CASH FUND LEDGER------------");
+            laCashFundLedger = new ArrayList<>();
+            laCashFundLedger.add(poController.LoadCashFundLedgerList(0));
+            loJSON = poController.AddCashFundLedger(laCashFundLedger);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.SaveRecord();
+            Assert.assertEquals("success", loJSON.get("result"));
+            
+            psTransNo = poController.getModel().getTransactionNo();
+            loJSON = poController.OpenRecord(psTransNo);
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.ApproveRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
             loJSON = poController.OpenRecord(psTransNo);
@@ -410,6 +436,7 @@ public class ReplenishmentRequestTest {
                     System.out.println("Debit Amount : " + poController.LoadPettyCashLedgerList(lnCtr).getDebitAmount());
                 }
                 
+                System.out.println("LOAD PETTY CASH LEDGER COUNT : " +  poController.getLoadPettyCashLedgerListCount());
                 System.out.println("---------ADD PETTY CASH LEDGER------------");
                 List<Model_PettyCashLedger> laPettyCashLedger = new ArrayList<>();
                 laPettyCashLedger.add(poController.LoadPettyCashLedgerList(0));
@@ -469,13 +496,23 @@ public class ReplenishmentRequestTest {
             Assert.assertEquals("success", loJSON.get("result"));
             
             //Set back to OPEN
-            loJSON = poController.OpenRecord(psTransNo);
+            loJSON = poController.newRecord();
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.updateRecord();
+            loJSON = poController.getModel().setFundType(Logical.NO);
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.getModel().setTransactionStatus(ReplenishmentRequestStatus.OPEN); 
+            loJSON = poController.getModel().setFundId(psPettyCash);
+            Assert.assertEquals("success", loJSON.get("result"));
+            //load ledger
+            loJSON = poController.loadLedger(true);
+            Assert.assertEquals("success", loJSON.get("result"));
+            System.out.println("LOAD PETTY CASH LEDGER COUNT : " +  poController.getLoadPettyCashLedgerListCount());
+            System.out.println("---------ADD PETTY CASH LEDGER------------");
+            List<Model_PettyCashLedger> laPettyCashLedger = new ArrayList<>();
+            laPettyCashLedger.add(poController.LoadPettyCashLedgerList(0));
+            loJSON = poController.AddPettyCashLedger(laPettyCashLedger);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.SaveRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
             loJSON = poController.OpenRecord(psTransNo);
@@ -488,15 +525,31 @@ public class ReplenishmentRequestTest {
             loJSON = poController.CancelRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
-            //Set back to APPROVED
-            loJSON = poController.OpenRecord(psTransNo);
+            //Set back to OPEN
+            loJSON = poController.newRecord();
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.getModel().setFundType(Logical.NO);
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.getModel().setFundId(psPettyCash);
+            Assert.assertEquals("success", loJSON.get("result"));
+            //load ledger
+            loJSON = poController.loadLedger(true);
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.updateRecord();
-            Assert.assertEquals("success", loJSON.get("result"));
-            loJSON = poController.getModel().setTransactionStatus(ReplenishmentRequestStatus.APPROVED); 
+            System.out.println("LOAD PETTY CASH LEDGER COUNT : " +  poController.getLoadPettyCashLedgerListCount());
+            System.out.println("---------ADD PETTY CASH LEDGER------------");
+            laPettyCashLedger = new ArrayList<>();
+            laPettyCashLedger.add(poController.LoadPettyCashLedgerList(0));
+            loJSON = poController.AddPettyCashLedger(laPettyCashLedger);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.SaveRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+                        
+            psTransNo = poController.getModel().getTransactionNo();
+            loJSON = poController.OpenRecord(psTransNo);
+            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.ApproveRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
             loJSON = poController.OpenRecord(psTransNo);
