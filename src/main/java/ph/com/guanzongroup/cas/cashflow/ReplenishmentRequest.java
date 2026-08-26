@@ -595,16 +595,30 @@ public class ReplenishmentRequest extends Parameter {
     @Override
     public JSONObject searchRecord(String value, boolean byCode) throws SQLException, GuanzonException {
         String lsSQL = getSQ_Browse();
-        String lsCondition = "";
         
+        String lsCondition = "";
         if(psCompanyId != null && !"".equals(psCompanyId)){
-            lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
+//                lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
+            lsCondition = " AND ("
+                        + " (a.cFundType = '1' AND b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
+                        + " OR (a.cFundType <> '1' AND c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
+                        + " )";
+            
         }
         if(psIndustryId != null && !"".equals(psIndustryId)){
             if(lsCondition.isEmpty()){
-                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+//                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+                lsCondition = " AND ("
+                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " )";
+                
             } else {
-                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+//                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
+                lsCondition = lsCondition + " AND ("
+                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                            + " )";
             }
         }
         
@@ -676,7 +690,7 @@ public class ReplenishmentRequest extends Parameter {
                 }
             }
         } else {
-            poJSON = searchFund(value);
+            poJSON = searchRecord(value, false);
             if (isJSONSuccess(poJSON)) {
                 setFund((String) poJSON.get("fund"));
             }
@@ -697,44 +711,77 @@ public class ReplenishmentRequest extends Parameter {
     private JSONObject searchFund(String value) throws SQLException, GuanzonException {
         poJSON = new JSONObject();
         String lsFund = "";
-        String lsSQL = "SELECT " 
-                    + "  a.sCashFIDx as fundId, " 
-                    + "  a.sBranchCD, " 
-                    + "  a.sDeptIDxx, " 
-                    + "  a.sCompnyID, " 
-                    + "  a.sIndstCdx, " 
-                    + "  a.sCashFDsc as description, " 
-                    + "  a.cTranStat "
-                    + "FROM CashFund a " 
-                    + " WHERE a.sDeptIDxx = " + SQLUtil.toSQL( poGRider.getDepartment())
-                    + " AND a.sCashFDsc LIKE " + SQLUtil.toSQL( "%"+value+"%")
-                    + " AND a.cTranStat = " + SQLUtil.toSQL(CashFundStatus.ACTIVE)
-                    + " AND a.sCompnyID = " + SQLUtil.toSQL( psCompanyId)
-                    + " AND a.sIndstCdx = " + SQLUtil.toSQL( psIndustryId)
-                    + "UNION " 
-                    + "SELECT " 
-                    + "  a.sPettyIDx as fundId, " 
-                    + "  a.sBranchCD, " 
-                    + "  a.sDeptIDxx, " 
-                    + "  a.sCompnyID, " 
-                    + "  a.sIndstCdx, " 
-                    + "  a.sPettyDsc as description, " 
-                    + "  a.cTranStat " 
-                    + " FROM PettyCash a "
-                    + " WHERE a.sDeptIDxx = " + SQLUtil.toSQL( poGRider.getDepartment())
-                    + " AND a.sPettyDsc LIKE " + SQLUtil.toSQL( "%"+value+"%")
-                    + " AND a.cTranStat = " + SQLUtil.toSQL(PettyCashStatus.ACTIVE)
-                    + " AND a.sCompnyID = " + SQLUtil.toSQL( psCompanyId)
-                    + " AND a.sIndstCdx = " + SQLUtil.toSQL( psIndustryId)
-                    ;
-                
+//        String lsSQL = "SELECT " 
+//                    + "  a.sCashFIDx as fundId, " 
+//                    + "  a.sBranchCD, " 
+//                    + "  a.sDeptIDxx, " 
+//                    + "  a.sCompnyID, " 
+//                    + "  a.sIndstCdx, " 
+//                    + "  a.sCashFDsc as description, " 
+//                    + "  a.cTranStat "
+//                    + " FROM CashFund a " 
+//                    + " WHERE a.sDeptIDxx = " + SQLUtil.toSQL( poGRider.getDepartment())
+//                    + " AND a.sCashFDsc LIKE " + SQLUtil.toSQL( "%"+value+"%")
+//                    + " AND a.cTranStat = " + SQLUtil.toSQL(CashFundStatus.ACTIVE)
+//                    + " AND a.sCompnyID = " + SQLUtil.toSQL( psCompanyId)
+//                    + " AND a.sIndstCdx = " + SQLUtil.toSQL( psIndustryId)
+//                    + " UNION " 
+//                    + " SELECT " 
+//                    + "  a.sPettyIDx as fundId, " 
+//                    + "  a.sBranchCD, " 
+//                    + "  a.sDeptIDxx, " 
+//                    + "  a.sCompnyID, " 
+//                    + "  a.sIndstCdx, " 
+//                    + "  a.sPettyDsc as description, " 
+//                    + "  a.cTranStat " 
+//                    + " FROM PettyCash a "
+//                    + " WHERE a.sDeptIDxx = " + SQLUtil.toSQL( poGRider.getDepartment())
+//                    + " AND a.sPettyDsc LIKE " + SQLUtil.toSQL( "%"+value+"%")
+//                    + " AND a.cTranStat = " + SQLUtil.toSQL(PettyCashStatus.ACTIVE)
+//                    + " AND a.sCompnyID = " + SQLUtil.toSQL( psCompanyId)
+//                    + " AND a.sIndstCdx = " + SQLUtil.toSQL( psIndustryId)
+//                    ;
+            String lsCondition = "";
+            if(psCompanyId != null && !"".equals(psCompanyId)){
+                lsCondition = " AND ("
+                            + " (a.cFundType = '1' AND b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
+                            + " OR (a.cFundType <> '1' AND c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
+                            + " )";
+
+            }
+            if(psIndustryId != null && !"".equals(psIndustryId)){
+                if(lsCondition.isEmpty()){
+                    lsCondition = " AND ("
+                                + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                                + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                                + " )";
+
+                } else {
+                    lsCondition = lsCondition + " AND ("
+                                + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                                + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                                + " )";
+                }
+            }
+
+            String lsSQL = MiscUtil.addCondition(getSQ_Browse(),  " ("
+                            + " (a.cFundType = '1' AND b.sCashFDsc LIKE " + SQLUtil.toSQL("%"+value+"%") + ") "
+                            + " OR (a.cFundType <> '1' AND c.sPettyDsc LIKE " + SQLUtil.toSQL("%"+value+"%") + ") "
+                            + " )");
+            lsSQL = lsSQL + lsCondition;
+            lsSQL = lsSQL + " AND ("
+                        + " (a.cFundType = '1' AND b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + ") "
+                        + " OR (a.cFundType <> '1' AND c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + ") "
+                        + " )";
+            lsSQL = lsSQL + " ORDER BY a.dTransact, a.sTransNox ASC ";
+            System.out.println("Executing SQL: " + lsSQL);
         System.out.println("Executing SQL: " + lsSQL);
         JSONObject loJSON = ShowDialogFX.Browse(poGRider,
                 lsSQL,
                 value,
-                "Fund ID»Description",
-                "fundId»description",
-                "IFNULL(a.sPettyIDx,a.sCashFIDx)»IFNULL(a.sPettyDsc,a.sCashFDsc)",
+                "Transaction No»Description",
+                "sTransNox»description",
+                "a.sTransNox»IFNULL(a.sPettyDsc,a.sCashFDsc)",
                 1);
         if (loJSON != null) {
             lsFund = (String) loJSON.get("description");
