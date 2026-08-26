@@ -231,6 +231,8 @@ public class ReplenishmentRequest extends Parameter {
     
     public JSONObject SaveRecord() throws SQLException{
         try {
+            //Recompute detail
+            computeFields();
             poJSON = new JSONObject();
             poJSON = saveRecord();
         } catch (SQLException | GuanzonException | CloneNotSupportedException ex) {
@@ -1074,6 +1076,8 @@ public class ReplenishmentRequest extends Parameter {
             
             paCashFundLedger.remove((Model_Cash_Fund_Ledger) loModel);
         }
+        
+        computeFields();
     }
     
     public void RemovePettyCashLedger(List<Model_PettyCashLedger> faModel){
@@ -1089,6 +1093,8 @@ public class ReplenishmentRequest extends Parameter {
             
             paPettyCashLedger.remove((Model_PettyCashLedger) loModel);
         }
+        
+        computeFields();
     }
     
     public JSONObject AddPettyCashLedger(List<Model_PettyCashLedger> faModel){
@@ -1104,9 +1110,7 @@ public class ReplenishmentRequest extends Parameter {
                 paPettyCashLedger.add(faModel.get(lnCtr));
             }
             
-            if(!checkExistPettyCashLedger(paRemovedPettyCashLedger, faModel.get(lnCtr) )){
-                paRemovedPettyCashLedger.add(faModel.get(lnCtr));
-            }
+            paRemovedPettyCashLedger.remove(faModel.get(lnCtr));
         }
         
         paPettyCashLedger.sort(
@@ -1132,9 +1136,7 @@ public class ReplenishmentRequest extends Parameter {
                 paCashFundLedger.add(faModel.get(lnCtr));
             }
             
-            if(!checkExistCashFundLedger(paRemovedCashFundLedger, faModel.get(lnCtr) )){
-                paRemovedCashFundLedger.add(faModel.get(lnCtr));
-            }
+            paRemovedCashFundLedger.remove(faModel.get(lnCtr));
         }
         
         paCashFundLedger.sort(
