@@ -631,9 +631,9 @@ public class ReplenishmentRequest extends Parameter {
                 lsSQL,
                 value,
                 "ID»Date»Fund Type»Description",
-                "sTransNox»dTransact»sFundType»IF(a.cFundType = '1',b.sCashFDsc, c.sPettyDsc)",
-                "a.sTransNox»a.dTransact»IF(a.cFundType = '1','CASH FUND', 'PETTY CASH')»IF(a.cFundType = '1',b.sCashFDsc, c.sPettyDsc)",
-                byCode ? 0 : 1);
+                "sTransNox»dTransact»sFundType»sFundDesc",
+                "a.sTransNox»a.dTransact»(CASE WHEN a.cFundType = '1' THEN 'CASH FUND' ELSE 'PETTY CASH' END)»(CASE WHEN a.cFundType = '1' THEN b.sCashFDsc ELSE c.sPettyDsc END)",
+                byCode ? 0 : 3);
 
         if (poJSON != null) {
             return poModel.openRecord((String) poJSON.get("sTransNox"));
@@ -937,7 +937,7 @@ public class ReplenishmentRequest extends Parameter {
                 );
             }
             
-            lsSQL = lsSQL + " GROUP BY sCashFIDx, sSourceCD, sSourceNo ORDER BY dTransact ASC ";
+            lsSQL = lsSQL + " GROUP BY sCashFIDx, sSourceCD, sSourceNo ORDER BY dTransact, nLedgerNo ASC ";
             System.out.println("Executing SQL: " + lsSQL);
             loRS = poGRider.executeQuery(lsSQL);
             if (MiscUtil.RecordCount(loRS) <= 0) {
@@ -974,7 +974,7 @@ public class ReplenishmentRequest extends Parameter {
                     + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
                 );
             }
-            lsSQL = lsSQL + " GROUP BY sPettyIDx, sSourceCD, sSourceNo ORDER BY dTransact ASC ";
+            lsSQL = lsSQL + " GROUP BY sPettyIDx, sSourceCD, sSourceNo ORDER BY dTransact, nLedgerNo ASC ";
             System.out.println("Executing SQL: " + lsSQL);
             loRS = poGRider.executeQuery(lsSQL);
             if (MiscUtil.RecordCount(loRS) <= 0) {
@@ -1115,6 +1115,7 @@ public class ReplenishmentRequest extends Parameter {
             }
         }
         
+        computeFields();
         poJSON = setJSON("success", "success");
         return poJSON;
     }
@@ -1141,6 +1142,7 @@ public class ReplenishmentRequest extends Parameter {
                 paRemovedCashFundLedger.remove(faModel.get(lnCtr));
             }
         }
+        computeFields();
         poJSON = setJSON("success", "success");
         return poJSON;
     }
@@ -1531,6 +1533,7 @@ public class ReplenishmentRequest extends Parameter {
                         "  b.sCashFDsc, " +
                         "  c.sPettyDsc," +
                         " CASE WHEN a.cFundType = '1' THEN 'CASH FUND' ELSE 'PETTY CASH' END AS sFundType, " +
+                        " CASE WHEN a.cFundType = '1' THEN b.sCashFDsc ELSE c.sPettyDsc END AS sFundDesc, " +
                         "  b.sIndstCdx, " +
                         "  b.sCompnyID, " +
                         "  c.sIndstCdx, " +
