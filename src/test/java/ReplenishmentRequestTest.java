@@ -13,6 +13,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -79,7 +80,7 @@ public class ReplenishmentRequestTest {
             System.err.println("Unable to load config.");
             System.exit(1);
         }
-
+        
         resetController();
     }
 
@@ -145,6 +146,7 @@ public class ReplenishmentRequestTest {
         schemaScripts.add("department_schema");
         schemaScripts.add("parameter_status_history_schema");
         schemaScripts.add("transaction_status_history_schema");
+        schemaScripts.add("position_schema");
 
         schemaScripts.add("replenishment_cashfund_schema");
         schemaScripts.add("replenishment_cashfund_ledger_schema");
@@ -164,6 +166,7 @@ public class ReplenishmentRequestTest {
         dataScripts.add("department_data");
         dataScripts.add("parameter_status_history_data");
         dataScripts.add("transaction_status_history_data");
+        dataScripts.add("position_data");
 
         dataScripts.add("replenishment_cashfund_data");
         dataScripts.add("replenishment_cashfund_ledger_data");
@@ -561,13 +564,13 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
 
-//            try {
-//                poController.setWithUI(false);
-//                poController.ShowStatusHistory();
-//            } catch (Exception ex) {
-//                Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
-//                Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
-//            }
+            try {
+                poController.setWithUI(false);
+                poController.ShowStatusHistory();
+            } catch (Exception ex) {
+                Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+                Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
+            }
             
             poController.getSysUser(psUserId);
             

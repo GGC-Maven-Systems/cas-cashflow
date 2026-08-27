@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.rowset.CachedRowSet;
+import javax.sql.rowset.RowSetFactory;
+import javax.sql.rowset.RowSetProvider;
 import org.guanzon.appdriver.agent.ShowDialogFX;
 import org.guanzon.appdriver.agent.services.Parameter;
 import org.guanzon.appdriver.base.GuanzonException;
@@ -153,30 +155,36 @@ public class ReplenishmentRequest extends Parameter {
     * Checks if a user has an allowed position for a specific transaction status.
     *
     * @param fsUserId user ID
+    * @param fsEmployeeId Employee ID
     * @return department name if authorized, otherwise empty string
     * @throws SQLException if a database error occurs
     * @throws GuanzonException if query execution fails
     */
-    public String checkApprover(String fsUserId) throws SQLException, GuanzonException{
+    public String checkDepartment(String fsUserId, String fsEmployeeId) throws SQLException, GuanzonException{
         String lsDepartment = "";
         String lsSQL = " SELECT   " +
-                    "  a.sUserIDxx, " +
+                    "  b.sUserIDxx, " +
                     "  d.sCompnyNm, " +
                     "  e.sDeptName, " +
                     "  c.sPositnNm, " +
-                    "  b.dFiredxxx, " +
-                    "  b.sDeptIDxx, " +
-                    "  b.sPositnID " +
-                    "FROM xxxSysUser a " +
-                    "LEFT JOIN Employee_Master001 b ON b.sEmployID = a.sEmployNo " +
-                    "LEFT JOIN Position c ON c.sPositnID = b.sPositnID  " +
-                    "LEFT JOIN Client_Master d ON d.sClientID = b.sEmployID  " +
-                    "LEFT JOIN Department e ON e.sDeptIDxx = b.sDeptIDxx  ";
+                    "  a.dFiredxxx, " +
+                    "  a.sDeptIDxx, " +
+                    "  a.sPositnID " +
+                    "FROM Employee_Master001 a " +
+                    "LEFT JOIN xxxSysUser b ON a.sEmployID = b.sEmployNo " +
+                    "LEFT JOIN Position c ON c.sPositnID = a.sPositnID  " +
+                    "LEFT JOIN Client_Master d ON d.sClientID = a.sEmployID  " +
+                    "LEFT JOIN Department e ON e.sDeptIDxx = a.sDeptIDxx  ";
         
-        lsSQL = MiscUtil.addCondition(lsSQL,
-                " a.sUserIDxx = " + SQLUtil.toSQL(fsUserId)
-//                + " AND b.sDeptIDxx = " + SQLUtil.toSQL(System.getProperty("sys.dept.finance")) 
-                 );
+        if(fsUserId != null && !"".equals(fsUserId)){
+            lsSQL = MiscUtil.addCondition(lsSQL,
+                    " b.sUserIDxx = " + SQLUtil.toSQL(fsUserId)
+                     );
+        } else {
+            lsSQL = MiscUtil.addCondition(lsSQL,
+                    " a.sEmployID = " + SQLUtil.toSQL(fsEmployeeId)
+                     );
+        }
         System.out.println("Executing SQL: " + lsSQL);
         ResultSet loRS = poGRider.executeQuery(lsSQL);
         try {
@@ -280,15 +288,30 @@ public class ReplenishmentRequest extends Parameter {
                 return poJSON;
             }
             
-            String lsDepartment = poGRider.getDepartment();
-            if (poGRider.getUserLevel() <= UserRight.ENCODER) {
-                lsDepartment = checkApprover(psApprover);
+            //Check the department of the custodian
+            String lsCustodianDept = "";
+            if(Logical.YES.equals(getModel().getFundType())){
+                lsCustodianDept = checkDepartment("", getModel().CashFund().getCashFundManager());
+            } else{
+                lsCustodianDept = checkDepartment("", getModel().PettyCash().getPettyManager());
             }
-//            if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
-            if(!lsDepartment.equals(poGRider.getDepartment())){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
-                poJSON.put("result", "error" );
-                poJSON.put("message", "User or approving officer is not authorized to approved the record." );
-                return poJSON;
+            
+            /**
+            * Approval of the Custodian's Supervisor / Manager
+               ie:
+               if Finance, Finance Manager
+               if Branch, Branch Manager
+            */
+            if(lsCustodianDept.equals(System.getProperty("sys.dept.finance"))){
+                String lsDepartment = poGRider.getDepartment();
+                if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+                    lsDepartment = checkDepartment(psApprover, "");
+                }
+                if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
+                    poJSON.put("result", "error" );
+                    poJSON.put("message", "User or approving officer is not authorized to approved the record." );
+                    return poJSON;
+                }
             }
         }
 
@@ -298,7 +321,7 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poGRider.beginTrans("UPDATE STATUS", "ApproveRecord", SOURCE_CODE, getModel().getTransactionNo());
+        poGRider.beginTrans("UPDATE STATUS", "ApproveRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
         
         //Generate PRF
         poJSON = generatePRF(lsStatus);
@@ -357,7 +380,7 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poGRider.beginTrans("UPDATE STATUS", "VoidRecord", SOURCE_CODE, getModel().getTransactionNo());
+        poGRider.beginTrans("UPDATE STATUS", "VoidRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
         
         //Removed batch no for saved ledger
         poJSON = updateLedger(lsStatus);
@@ -413,15 +436,30 @@ public class ReplenishmentRequest extends Parameter {
                     return poJSON;
                 }
 
-                String lsDepartment = poGRider.getDepartment();
-                if (poGRider.getUserLevel() <= UserRight.ENCODER) {
-                    lsDepartment = checkApprover(psApprover);
+                //Check the department of the custodian
+                String lsCustodianDept = "";
+                if(Logical.YES.equals(getModel().getFundType())){
+                    lsCustodianDept = checkDepartment("", getModel().CashFund().getCashFundManager());
+                } else{
+                    lsCustodianDept = checkDepartment("", getModel().PettyCash().getPettyManager());
                 }
-//                if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
-                if(!lsDepartment.equals(poGRider.getDepartment())){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
-                    poJSON.put("result", "error" );
-                    poJSON.put("message", "User or approving officer is not authorized to cancelled the record." );
-                    return poJSON;
+
+                /**
+                * Approval of the Custodian's Supervisor / Manager
+                   ie:
+                   if Finance, Finance Manager
+                   if Branch, Branch Manager
+                */
+                if(lsCustodianDept.equals(System.getProperty("sys.dept.finance"))){
+                    String lsDepartment = poGRider.getDepartment();
+                    if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+                        lsDepartment = checkDepartment(psApprover, "");
+                    }
+                    if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
+                        poJSON.put("result", "error" );
+                        poJSON.put("message", "User or approving officer is not authorized to approved the record." );
+                        return poJSON;
+                    }
                 }
             }
         }
@@ -432,7 +470,7 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poGRider.beginTrans("UPDATE STATUS", "CancelRecord", SOURCE_CODE, getModel().getTransactionNo());
+        poGRider.beginTrans("UPDATE STATUS", "CancelRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
         
         //Removed batch no for saved ledger
         poJSON = updateLedger(lsStatus);
@@ -492,15 +530,30 @@ public class ReplenishmentRequest extends Parameter {
                 return poJSON;
             }
             
-            String lsDepartment = poGRider.getDepartment();
-            if (poGRider.getUserLevel() <= UserRight.ENCODER) {
-                lsDepartment = checkApprover(psApprover);
+            //Check the department of the custodian
+            String lsCustodianDept = "";
+            if(Logical.YES.equals(getModel().getFundType())){
+                lsCustodianDept = checkDepartment("", getModel().CashFund().getCashFundManager());
+            } else{
+                lsCustodianDept = checkDepartment("", getModel().PettyCash().getPettyManager());
             }
-//            if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
-            if(!lsDepartment.equals(poGRider.getDepartment())){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
-                poJSON.put("result", "error" );
-                poJSON.put("message", "User or approving officer is not authorized to post the record." );
-                return poJSON;
+
+            /**
+            * Approval of the Custodian's Supervisor / Manager
+               ie:
+               if Finance, Finance Manager
+               if Branch, Branch Manager
+            */
+            if(lsCustodianDept.equals(System.getProperty("sys.dept.finance"))){
+                String lsDepartment = poGRider.getDepartment();
+                if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+                    lsDepartment = checkDepartment(psApprover, "");
+                }
+                if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
+                    poJSON.put("result", "error" );
+                    poJSON.put("message", "User or approving officer is not authorized to approved the record." );
+                    return poJSON;
+                }
             }
         }
 
@@ -510,7 +563,7 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
-        poGRider.beginTrans("UPDATE STATUS", "PostRecord", SOURCE_CODE, getModel().getTransactionNo());
+        poGRider.beginTrans("UPDATE STATUS", "PostRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
         
         try {
             if(Logical.YES.equals(getModel().getFundType())){
@@ -801,7 +854,6 @@ public class ReplenishmentRequest extends Parameter {
         
         String lsCondition = "";
         if(psCompanyId != null && !"".equals(psCompanyId)){
-//                lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
             lsCondition = " AND ("
                         + " (a.cFundType = '1' AND b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
                         + " OR (a.cFundType <> '1' AND c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
@@ -810,14 +862,12 @@ public class ReplenishmentRequest extends Parameter {
         }
         if(psIndustryId != null && !"".equals(psIndustryId)){
             if(lsCondition.isEmpty()){
-//                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
                 lsCondition = " AND ("
                             + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
                             + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
                             + " )";
                 
             } else {
-//                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
                 lsCondition = lsCondition + " AND ("
                             + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
                             + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
@@ -827,9 +877,6 @@ public class ReplenishmentRequest extends Parameter {
         
         String lsSQL = MiscUtil.addCondition(getSQ_Browse(), " a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%"));
         lsSQL = lsSQL + lsCondition;
-//        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + " ,c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) +  ")";
-//        lsSQL = lsSQL + " AND IF(a.cFundType = '1',b.sCashFDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + " ,c.sPettyDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") +  ")";
-
         lsSQL = lsSQL + " AND ("
                     + " (a.cFundType = '1' AND b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + ") "
                     + " OR (a.cFundType <> '1' AND c.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + ") "
@@ -1591,14 +1638,38 @@ public class ReplenishmentRequest extends Parameter {
                         "  b.sCompnyID, " +
                         "  c.sIndstCdx, " +
                         "  c.sCompnyID " +
-//                        "  IF(a.cFundType = '1','CASH FUND', 'PETTY CASH') AS sFundType, " +
-//                        "  IF(a.cFundType = '1',b.sIndstCdx, c.sIndstCdx) AS sIndstCdx, " +
-//                        "  IF(a.cFundType = '1',b.sCompnyID, c.sCompnyID) AS sCompnyID " +
                         " FROM Replenishment_Request a " +
                         " LEFT JOIN CashFund b ON b.sCashFIDx = a.sFundIdxx " +
                         " LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxx ";
 
         return MiscUtil.addCondition(lsSQL, lsCondition);
+    }
+    
+    @Override
+    protected CachedRowSet getStatusHistory() throws SQLException {
+        String lsTable = " FROM GCASys_DBF.Parameter_Status_History a " +
+                        "LEFT JOIN GCASys_DBF.xxxSysUser b ON b.sUserIDxx = AES_DECRYPT(UNHEX(a.sModified), '08220326') " +
+                        "LEFT JOIN GGC_ISysDBF.Client_Master c ON b.sEmployNo = c.sClientID " +
+                        "LEFT JOIN GCASys_DBF.xxxSysUser d ON d.sUserIDxx = AES_DECRYPT(UNHEX(a.sApproved), '08220326') " +
+                        "LEFT JOIN GGC_ISysDBF.Client_Master e ON d.sEmployNo = e.sClientID " ;
+        if(!pbWithUI){
+            lsTable = " FROM Parameter_Status_History a " +
+                    "LEFT JOIN xxxSysUser b ON b.sUserIDxx = a.sModified " +
+                    "LEFT JOIN Client_Master c ON b.sEmployNo = c.sClientID " +
+                    "LEFT JOIN xxxSysUser d ON d.sUserIDxx = a.sApproved " +
+                    "LEFT JOIN Client_Master e ON d.sEmployNo = e.sClientID ";
+        }
+        String lsSQL = "SELECT  a.sTableNme, a.sSourceNo, a.sRemarksx, a.cRefrStat cTranStat, IFNULL(c.sCompnyNm, '-') xModified, IFNULL(e.sCompnyNm, '-') xApproved, a.dModified, a.dApproved, a.sModified, a.sApproved " +
+                    lsTable +
+                    " WHERE a.sSourceNo = " + SQLUtil.toSQL(getModel().getTransactionNo()) +
+                    " AND a.sTableNme = " + SQLUtil.toSQL(getModel().getTable()) + " ORDER BY a.dModified";
+        System.out.println("STATUS HISTORY : " + lsSQL);
+        ResultSet loRS = this.poGRider.executeQuery(lsSQL);
+        RowSetFactory factory = RowSetProvider.newFactory();
+        CachedRowSet rowset = factory.createCachedRowSet();
+        rowset.populate(loRS);
+        MiscUtil.close(loRS);
+        return rowset;
     }
     
     /**
@@ -1673,7 +1744,9 @@ public class ReplenishmentRequest extends Parameter {
             entryDate = (String) loJSON.get("sEntryDte");
         }
         
-        showStatusHistoryUI("Replenishment Request", (String) poModel.getValue("sTransNox"), entryBy, entryDate, crs);
+        if(pbWithUI){
+            showStatusHistoryUI("Replenishment Request", (String) poModel.getValue("sTransNox"), entryBy, entryDate, crs);
+        }
     }
     
     /**
