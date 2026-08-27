@@ -36,6 +36,7 @@ import ph.com.guanzongroup.cas.cashflow.model.Model_Replenishment_Request;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowControllers;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.CashFundStatus;
+import ph.com.guanzongroup.cas.cashflow.status.CheckTransferStatus;
 import ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStatus;
 import ph.com.guanzongroup.cas.cashflow.status.PettyCashStatus;
 import ph.com.guanzongroup.cas.cashflow.status.ReplenishmentRequestStatus;
@@ -899,7 +900,7 @@ public class ReplenishmentRequest extends Parameter {
             }
         }
         
-        String lsSQL = MiscUtil.addCondition(getSQ_Browse(), " a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%"));
+        String lsSQL = MiscUtil.addCondition(getSQ_Browse(), " a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%") );
         lsSQL = lsSQL + lsCondition;
         lsSQL = lsSQL + " AND ("
                     + " (a.cFundType = '1' AND b.sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode()) + ") "
@@ -913,19 +914,22 @@ public class ReplenishmentRequest extends Parameter {
         if(isPosting){
             List<String> laList = getPaidReplenishment();
             String lsTransNo = "";
-            if (laList.size() > 1) {
+            if (laList.size() > 0) {
                 for (String list : laList) {
                     lsTransNo += ", " + SQLUtil.toSQL(list);
                 }
 
-                lsTransNo = "a.sTransNox IN (" + lsTransNo.substring(2) + ")";
-            } else {
-                lsTransNo = "a.sTransNox = " + SQLUtil.toSQL(lsTransNo);
+                lsTransNo = " AND a.sTransNox IN (" + lsTransNo.substring(2) + ")";
             }
             
             if(lsTransNo != null && !"".equals(lsTransNo)){
                 lsSQL = lsSQL + lsTransNo;
+            } else {
+                poJSON = setJSON("success", "success");
+                return poJSON;
             }
+        } else {
+            lsSQL = lsSQL + " AND d.cProcessd = " + SQLUtil.toSQL(Logical.NO);
         }
         
         lsSQL = lsSQL + " ORDER BY a.dTransact, a.sTransNox ASC ";
@@ -970,7 +974,13 @@ public class ReplenishmentRequest extends Parameter {
     
     private List<String> getPaidReplenishment() throws SQLException{
         List<String> laList = new ArrayList<>();
-        String lsSQL = " SELECT sPayLoadx FROM Check_Transfer_Detail WHERE cReceived = "+ SQLUtil.toSQL(Logical.YES) ;
+        String lsSQL = " SELECT a.sTransNox, a.cTranStat, b.sPayLoadx AS sPayLoadx "
+                + " FROM Check_Transfer_Master a "
+                + " LEFT JOIN Check_Transfer_Detail b ON b.sTransNox = a.sTransNox"
+                + " WHERE b.cReceived = " + SQLUtil.toSQL(Logical.YES) 
+                + " AND ( a.cTranStat = " + SQLUtil.toSQL(CheckTransferStatus.CONFIRMED)
+                + " OR a.cTranStat = " + SQLUtil.toSQL(CheckTransferStatus.POSTED)
+                + " ) " ;
         
         System.out.println("Executing SQL: " + lsSQL);
         ResultSet loRS = poGRider.executeQuery(lsSQL);
@@ -985,21 +995,22 @@ public class ReplenishmentRequest extends Parameter {
                             for (JsonNode request : requests) {
                                 String lsTransNox = request.asText();
                                 if(lsTransNox != null && !"".equals(lsTransNox)){
-                                    //Check if replenishment request is not yet posted
-                                    Model_Replenishment_Request loObj = new CashflowModels(poGRider).Replenishment_Request();
-                                    poJSON = loObj.openRecord(lsTransNox);
-                                    if(isJSONSuccess(poJSON)){
-                                        if(ReplenishmentRequestStatus.APPROVED.equals(loObj.getTransactionStatus())){
-                                            laList.add(lsTransNox);
-                                            System.out.println("replenishment_request : "+lsTransNox);
+                                    if(!laList.contains(lsTransNox)){
+                                        //Check if replenishment request is not yet posted
+                                        Model_Replenishment_Request loObj = new CashflowModels(poGRider).Replenishment_Request();
+                                        poJSON = loObj.openRecord(lsTransNox);
+                                        if(isJSONSuccess(poJSON)){
+                                            if(ReplenishmentRequestStatus.APPROVED.equals(loObj.getTransactionStatus())){
+                                                    laList.add(lsTransNox);
+                                                    System.out.println("replenishment_request : "+lsTransNox);
+                                            }
                                         }
                                     }
                                 }
                             }
 
                         } catch (JsonProcessingException | GuanzonException ex) {
-                            Logger.getLogger(getClass().getName())
-                                    .log(Level.SEVERE, MiscUtil.getException(ex), ex);
+                            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
                         }
                     }
                 }
@@ -1724,30 +1735,23 @@ public class ReplenishmentRequest extends Parameter {
                         "  b.sIndstCdx, " +
                         "  b.sCompnyID, " +
                         "  c.sIndstCdx, " +
-                        "  c.sCompnyID " +
+                        "  c.sCompnyID, " +
+                        "  d.sTransNox  " +
                         " FROM Replenishment_Request a " +
                         " LEFT JOIN CashFund b ON b.sCashFIDx = a.sFundIdxx " +
-                        " LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxx ";
+                        " LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxx " +
+                        " LEFT JOIN Payment_Request_Master d ON d.sSourceNo = a.sTransNox AND d.sSourceCd = " + SQLUtil.toSQL(ReplenishmentRequestStatus.SourceCode.REPLENISHMENT);
 
         return MiscUtil.addCondition(lsSQL, lsCondition);
     }
     
-    @Override
-    protected CachedRowSet getStatusHistory() throws SQLException {
-        String lsTable = " FROM GCASys_DBF.Parameter_Status_History a " +
-                        "LEFT JOIN GCASys_DBF.xxxSysUser b ON b.sUserIDxx = AES_DECRYPT(UNHEX(a.sModified), '08220326') " +
-                        "LEFT JOIN GGC_ISysDBF.Client_Master c ON b.sEmployNo = c.sClientID " +
-                        "LEFT JOIN GCASys_DBF.xxxSysUser d ON d.sUserIDxx = AES_DECRYPT(UNHEX(a.sApproved), '08220326') " +
-                        "LEFT JOIN GGC_ISysDBF.Client_Master e ON d.sEmployNo = e.sClientID " ;
-        if(!pbWithUI){
-            lsTable = " FROM Parameter_Status_History a " +
+    protected CachedRowSet getStatusHistoryTest() throws SQLException {
+        String lsSQL = "SELECT  a.sTableNme, a.sSourceNo, a.sRemarksx, a.cRefrStat cTranStat, IFNULL(c.sCompnyNm, '-') xModified, IFNULL(e.sCompnyNm, '-') xApproved, a.dModified, a.dApproved, a.sModified, a.sApproved " +
+                    " FROM Parameter_Status_History a " +
                     "LEFT JOIN xxxSysUser b ON b.sUserIDxx = a.sModified " +
                     "LEFT JOIN Client_Master c ON b.sEmployNo = c.sClientID " +
                     "LEFT JOIN xxxSysUser d ON d.sUserIDxx = a.sApproved " +
-                    "LEFT JOIN Client_Master e ON d.sEmployNo = e.sClientID ";
-        }
-        String lsSQL = "SELECT  a.sTableNme, a.sSourceNo, a.sRemarksx, a.cRefrStat cTranStat, IFNULL(c.sCompnyNm, '-') xModified, IFNULL(e.sCompnyNm, '-') xApproved, a.dModified, a.dApproved, a.sModified, a.sApproved " +
-                    lsTable +
+                    "LEFT JOIN Client_Master e ON d.sEmployNo = e.sClientID " +
                     " WHERE a.sSourceNo = " + SQLUtil.toSQL(getModel().getTransactionNo()) +
                     " AND a.sTableNme = " + SQLUtil.toSQL(getModel().getTable()) + " ORDER BY a.dModified";
         System.out.println("STATUS HISTORY : " + lsSQL);
@@ -1770,7 +1774,12 @@ public class ReplenishmentRequest extends Parameter {
      * @throws Exception for other unexpected errors
      */
     public void ShowStatusHistory() throws SQLException, GuanzonException, Exception{
-        CachedRowSet crs = getStatusHistory();
+        CachedRowSet crs;
+        if(pbWithUI){
+            crs = getStatusHistory();
+        } else {
+            crs = getStatusHistoryTest();
+        }
         
         crs.beforeFirst();
         

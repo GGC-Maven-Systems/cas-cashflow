@@ -157,6 +157,8 @@ public class ReplenishmentRequestTest {
         schemaScripts.add("payment_request_detail_schema");
         schemaScripts.add("client_master_schema");
         schemaScripts.add("payee_schema");
+        schemaScripts.add("check_transfer_master_schema");
+        schemaScripts.add("check_transfer_detail_schema");
 
 
         dataScripts.add("industry_data");
@@ -177,6 +179,8 @@ public class ReplenishmentRequestTest {
         dataScripts.add("payment_request_detail_data");
         dataScripts.add("client_master_data");
         dataScripts.add("payee_data");
+        dataScripts.add("check_transfer_master_data");
+        dataScripts.add("check_transfer_detail_data");
 
         for (String schema : schemaScripts) {
             try (FileReader schemaReader = new FileReader("test-data/" + schema + ".sql")) {
