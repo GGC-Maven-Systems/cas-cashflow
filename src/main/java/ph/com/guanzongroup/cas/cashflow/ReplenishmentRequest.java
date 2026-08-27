@@ -773,7 +773,7 @@ public class ReplenishmentRequest extends Parameter {
                 3);
 
         if (poJSON != null) {
-            lsFund = (String) poJSON.get("sTransNox");
+            lsFund = (String) poJSON.get("sFundDesc");
         } else {
             poJSON = new JSONObject();
             poJSON = setJSON("error", "No record loaded.");
