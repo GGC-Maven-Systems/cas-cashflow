@@ -1193,22 +1193,23 @@ public class ReplenishmentRequest extends Parameter {
     }
     
     public void computeFields(){
-        Double lsTransactionAmount = 0.0000;
-        if(Logical.YES.equals(getModel().getFundType())){
-            //Get Added cash fund ledger
-            for(int lnCtr = 0; lnCtr < getCashFundLedgerListCount(); lnCtr++){
-                lsTransactionAmount += CashFundLedgerList(lnCtr).getCreditAmount();
-            }
+        if(getEditMode() == EditMode.ADDNEW || getEditMode() == EditMode.UPDATE){
+            Double lsTransactionAmount = 0.0000;
+            if(Logical.YES.equals(getModel().getFundType())){
+                //Get Added cash fund ledger
+                for(int lnCtr = 0; lnCtr < getCashFundLedgerListCount(); lnCtr++){
+                    lsTransactionAmount += CashFundLedgerList(lnCtr).getCreditAmount();
+                }
 
-        } else {
-            //Get Added petty cash ledger
-            for(int lnCtr = 0; lnCtr < getPettyCashLedgerListCount(); lnCtr++){
-                lsTransactionAmount += PettyCashLedgerList(lnCtr).getCreditAmount();
-            }
+            } else {
+                //Get Added petty cash ledger
+                for(int lnCtr = 0; lnCtr < getPettyCashLedgerListCount(); lnCtr++){
+                    lsTransactionAmount += PettyCashLedgerList(lnCtr).getCreditAmount();
+                }
 
+            }
+            getModel().setTransactionAmount(lsTransactionAmount);
         }
-        
-        getModel().setTransactionAmount(lsTransactionAmount);
     }
     
     /**
