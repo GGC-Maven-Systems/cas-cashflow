@@ -38,12 +38,12 @@ public class ReplenishmentRequestTest {
     static ReplenishmentRequest poController;
     static Connection conn;
     private static String psUserId = "GCO1260011";//M001250015;
-    private static String psIndustryId = "09";
+    private static String psIndustryId = "08";
     private static String psCompanyId = "M001";
     private static String psCategorCd = "0000007";
     private String psTransNo = "";
     private String psCashFund = "GCO126000000002";
-    private String psPettyCash = "0000004";
+    private String psPettyCash = "0000005";
 
     @BeforeClass
     public static void setUpClass() throws GuanzonException, SQLException, IOException {
@@ -92,7 +92,6 @@ public class ReplenishmentRequestTest {
                 System.err.println(e.getMessage());
             }
         }
-
         System.clearProperty("sys.default.path.config");
         System.clearProperty("sys.default.path.metadata");
         System.clearProperty("sys.default.path.temp");
@@ -147,10 +146,10 @@ public class ReplenishmentRequestTest {
         schemaScripts.add("parameter_status_history_schema");
         schemaScripts.add("transaction_status_history_schema");
 
-        schemaScripts.add("cashfund_schema");
-        schemaScripts.add("cashfund_ledger_schema");
-        schemaScripts.add("pettycash_schema");
-        schemaScripts.add("pettycash_ledger_schema");
+        schemaScripts.add("replenishment_cashfund_schema");
+        schemaScripts.add("replenishment_cashfund_ledger_schema");
+        schemaScripts.add("replenishment_pettycash_schema");
+        schemaScripts.add("replenishment_pettycash_ledger_schema");
         schemaScripts.add("replenishment_request_schema");
         schemaScripts.add("payment_request_master_schema");
         schemaScripts.add("payment_request_detail_schema");
@@ -166,10 +165,10 @@ public class ReplenishmentRequestTest {
         dataScripts.add("parameter_status_history_data");
         dataScripts.add("transaction_status_history_data");
 
-        dataScripts.add("cashfund_data");
-        dataScripts.add("cashfund_ledger_data");
-        dataScripts.add("pettycash_data");
-        dataScripts.add("pettycash_ledger_data");
+        dataScripts.add("replenishment_cashfund_data");
+        dataScripts.add("replenishment_cashfund_ledger_data");
+        dataScripts.add("replenishment_pettycash_data");
+        dataScripts.add("replenishment_pettycash_ledger_data");
         dataScripts.add("replenishment_request_data");
         dataScripts.add("payment_request_master_data");
         dataScripts.add("payment_request_detail_data");
@@ -228,7 +227,7 @@ public class ReplenishmentRequestTest {
         return localDate;
     }
     
-//    @Test
+    @Test
     public void test001CashFund(){
         try {
             JSONObject loJSON = new JSONObject();
@@ -515,11 +514,11 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            psTransNo = poController.getModel().getTransactionNo();
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.ApproveRecord();
             Assert.assertEquals("success", loJSON.get("result"));
-            
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.CancelRecord();
@@ -588,8 +587,8 @@ public class ReplenishmentRequestTest {
             JSONObject loJSON = new JSONObject();
             resetController();
             poController.setWithUI(false);
-            poController.getModel().setCompanyId(psCompanyId);
-            poController.getModel().setIndustryId(psIndustryId);
+            poController.setCompanyId(psCompanyId);
+            poController.setIndustryId(psIndustryId);
             loJSON = poController.loadTransactionList("", "");
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
