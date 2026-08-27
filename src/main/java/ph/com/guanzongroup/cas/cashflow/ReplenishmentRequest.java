@@ -696,26 +696,47 @@ public class ReplenishmentRequest extends Parameter {
         }
         
         System.out.println("MySQL : " + lsSQL);
-        poJSON = ShowDialogFX.Search(poGRider,
-                lsSQL,
-                value,
-                "ID»Date»Fund Type»Description",
-                "sTransNox»dTransact»sFundType»sFundDesc",
-                "a.sTransNox»a.dTransact»(CASE WHEN a.cFundType = '1' THEN 'CASH FUND' ELSE 'PETTY CASH' END)»(CASE WHEN a.cFundType = '1' THEN b.sCashFDsc ELSE c.sPettyDsc END)",
-                byCode ? 0 : 3);
-
-        if (poJSON != null) {
-            try {
-                return OpenRecord((String) poJSON.get("sTransNox"));
-            } catch (CloneNotSupportedException ex) {
-                Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+        
+        if(pbWithUI){
+            poJSON = ShowDialogFX.Search(poGRider,
+                    lsSQL,
+                    value,
+                    "ID»Date»Fund Type»Description",
+                    "sTransNox»dTransact»sFundType»sFundDesc",
+                    "a.sTransNox»a.dTransact»(CASE WHEN a.cFundType = '1' THEN 'CASH FUND' ELSE 'PETTY CASH' END)»(CASE WHEN a.cFundType = '1' THEN b.sCashFDsc ELSE c.sPettyDsc END)",
+                    byCode ? 0 : 3);
+            if (poJSON != null) {
+                try {
+                    return OpenRecord((String) poJSON.get("sTransNox"));
+                } catch (CloneNotSupportedException ex) {
+                    Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+                    poJSON = new JSONObject();
+                    poJSON = setJSON("error", MiscUtil.getException(ex));
+                    return poJSON;
+                }
+            } else {
                 poJSON = new JSONObject();
-                poJSON = setJSON("error", MiscUtil.getException(ex));
+                poJSON = setJSON("error", "No record loaded.");
                 return poJSON;
             }
+            
         } else {
             poJSON = new JSONObject();
-            poJSON = setJSON("error", "No record loaded.");
+            ResultSet loRS = poGRider.executeQuery(lsSQL);
+            try {
+                if (MiscUtil.RecordCount(loRS) > 0) {
+                    if(loRS.next()){
+                        if(loRS.getString("sTransNox") != null && !"".equals(loRS.getString("sTransNox"))){
+                           poJSON.put("sTransNox", loRS.getString("sTransNox"));
+                        }
+                    }
+                }
+                MiscUtil.close(loRS);
+            } catch (SQLException e) {
+                System.out.println("No record loaded.");
+            }
+            
+            poJSON = setJSON("success", "No record loaded.");
             return poJSON;
         }
     }
@@ -817,21 +838,38 @@ public class ReplenishmentRequest extends Parameter {
         }
         
         System.out.println("MySQL : " + lsSQL);
-        poJSON = ShowDialogFX.Search(poGRider,
-                lsSQL,
-                value,
-                "ID»Date»Fund Type»Description",
-                "sTransNox»dTransact»sFundType»sFundDesc",
-                "a.sTransNox»a.dTransact»(CASE WHEN a.cFundType = '1' THEN 'CASH FUND' ELSE 'PETTY CASH' END)»(CASE WHEN a.cFundType = '1' THEN b.sCashFDsc ELSE c.sPettyDsc END)",
-                3);
-
-        if (poJSON != null) {
-            lsFund = (String) poJSON.get("sFundDesc");
+        if(pbWithUI){
+            poJSON = ShowDialogFX.Search(poGRider,
+                    lsSQL,
+                    value,
+                    "ID»Date»Fund Type»Description",
+                    "sTransNox»dTransact»sFundType»sFundDesc",
+                    "a.sTransNox»a.dTransact»(CASE WHEN a.cFundType = '1' THEN 'CASH FUND' ELSE 'PETTY CASH' END)»(CASE WHEN a.cFundType = '1' THEN b.sCashFDsc ELSE c.sPettyDsc END)",
+                    3);
+            if (poJSON != null) {
+                lsFund = (String) poJSON.get("sFundDesc");
+            } else {
+                poJSON = new JSONObject();
+                poJSON = setJSON("error", "No record loaded.");
+                return poJSON;
+            }
         } else {
-            poJSON = new JSONObject();
-            poJSON = setJSON("error", "No record loaded.");
-            return poJSON;
+            ResultSet loRS = poGRider.executeQuery(lsSQL);
+            try {
+                if (MiscUtil.RecordCount(loRS) > 0) {
+                    if(loRS.next()){
+                        if(loRS.getString("sFundDesc") != null && !"".equals(loRS.getString("sFundDesc"))){
+                           lsFund = loRS.getString("sFundDesc");
+                        }
+                    }
+                }
+                MiscUtil.close(loRS);
+            } catch (SQLException e) {
+                System.out.println("No record loaded.");
+                lsFund = "";
+            }
         }
+
         
         poJSON = setJSON("success", "success");
         poJSON.put("fund", lsFund);

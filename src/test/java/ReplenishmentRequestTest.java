@@ -592,6 +592,7 @@ public class ReplenishmentRequestTest {
             poController.setWithUI(false);
             poController.setCompanyId(psCompanyId);
             poController.setIndustryId(psIndustryId);
+            System.out.println("---------LOAD TRANSACTION LIST------------");
             loJSON = poController.loadTransactionList("", "");
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
@@ -622,9 +623,13 @@ public class ReplenishmentRequestTest {
             poController.setFund("test");
             Assert.assertEquals("test", poController.getfund());
             
-//            loJSON = poController.SearchFund("",false,true);
-//            System.out.println("MESSAGE : " + loJSON.get("message"));
-//            Assert.assertEquals("success", loJSON.get("result"));
+            loJSON = poController.SearchFund("",false,true);
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
+            
+            loJSON = poController.searchRecord("",false);
+            System.out.println("MESSAGE : " + loJSON.get("message"));
+            Assert.assertEquals("success", loJSON.get("result"));
         } catch (SQLException | GuanzonException | CloneNotSupportedException ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
             Assert.assertEquals(MiscUtil.getException(ex), MiscUtil.getException(ex));
