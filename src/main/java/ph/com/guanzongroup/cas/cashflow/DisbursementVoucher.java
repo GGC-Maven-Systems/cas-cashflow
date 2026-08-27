@@ -4925,7 +4925,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 System.out.println("Amount : " + Detail(lnCtr).getAmount());
                 System.out.println("-----------------------------------------------------------------------");
             }
-            
+
             switch(Master().getDisbursementType()){
                 case DisbursementStatic.DisbursementType.CHECK:
                 case DisbursementStatic.DisbursementType.CHECK_DEPOSIT:
@@ -4945,7 +4945,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                                 return poJSON;
                             }
                         }
-                        
+
                         if(CheckStatus.PrintStatus.PRINTED.equals(poCheckPayments.getModel().getPrint())){
                             System.out.println("----------Bank Account Transaction----------");
                             //Bank Account Transaction
@@ -4953,95 +4953,114 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                             poJSON = poBankAccountTrans.InitTransaction();
                             if ("error".equals((String) poJSON.get("result"))) {
                                 return poJSON;
-                            }         
-                            poJSON = poBankAccountTrans.CheckDisbursement(
-                                poCheckPayments.getModel().getBankAcountID(),
-                                    poCheckPayments.getModel().getSourceNo(),
-                               SQLUtil.toDate(xsDateShort(poCheckPayments.getModel().getCheckDate()), SQLUtil.FORMAT_SHORT_DATE),
-                                     poCheckPayments.getModel().getAmount(),
-                                     poCheckPayments.getModel().getCheckNo(),
-                                    Master().getVoucherNo(),
-                                  false);
-                            if ("error".equals(poJSON.get("result"))) {
-                                return poJSON;
                             }
-                            System.out.println("--------------------------------------------");
-                            
-                            System.out.println("----------AP CLIENT MASTER----------");
-                            //Insert AP Client
-                            APTransaction loAPTrans = new APTransaction(poGRider, Master().getBranchCode());
-                            //get detail per category to pass on payment issue category
-//                            List<String> laPerCategory = getCategoryDetail();
-//                            for (int lnCategory = 0; lnCategory <= laPerCategory.size() - 1; lnCategory++){    
-//                            }
-                            String lsClientId = Master().Payee().getAPClientID();
-                            if(lsClientId == null || "".equals(lsClientId)){
-                                lsClientId = Master().Payee().getClientID();
-                            } 
-                            poJSON = loAPTrans.PaymentIssue(lsClientId, 
-                                    "",
-                                    Master().getTransactionNo(),
-                                    Master().getTransactionDate(),  
-                                    Master().getNetTotal(), 
+                            poJSON = poBankAccountTrans.CheckDisbursement(
+                                    poCheckPayments.getModel().getBankAcountID(),
+                                    poCheckPayments.getModel().getSourceNo(),
+                                    SQLUtil.toDate(xsDateShort(poCheckPayments.getModel().getCheckDate()), SQLUtil.FORMAT_SHORT_DATE),
+                                    poCheckPayments.getModel().getAmount(),
+                                    poCheckPayments.getModel().getCheckNo(),
+                                    Master().getVoucherNo(),
                                     false);
                             if ("error".equals(poJSON.get("result"))) {
                                 return poJSON;
                             }
-                            System.out.println("-----------------------------------");
-                            
-                            try {
-                                GLTransaction loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
-                                System.out.println("----------JOURNAL PROPOSAL ACCOUNT MASTER / LEDGER----------");
-                                if(getJournalProposalList() != null){
-                                    for(int lnJEP = 0; lnJEP < getJournalProposalList().size(); lnJEP++){
-                                        if(JournalProposal(lnJEP).getEditMode() == EditMode.UPDATE){
+                            System.out.println("--------------------------------------------");
+
+                            System.out.println("----------AP CLIENT MASTER----------");
+
+                            /**
+                             * Validates whether this check payment transaction is a replacement-only
+                             * transaction.
+                             *
+                             * <p>
+                             * Replacement-only check payment transactions already have a corresponding
+                             * AP Client record from the original transaction. Therefore, a new AP Client
+                             * payment issue must not be created to prevent duplicate AP Client records.
+                             * </p>
+                             *
+                             * @author TEEJEI DE CELIS
+                             * @since 2026-08-22
+                             * @approved Ma'am Grace
+                             * @approvedDate 2026-08-22
+                             */
+                            if(!isReplacementOnly(poCheckPayments.getModel().getSourceNo())) {
+                                //Insert AP Client
+                                APTransaction loAPTrans = new APTransaction(poGRider, Master().getBranchCode());
+                                //get detail per category to pass on payment issue category
+//                            List<String> laPerCategory = getCategoryDetail();
+//                            for (int lnCategory = 0; lnCategory <= laPerCategory.size() - 1; lnCategory++){
+//                            }
+                                String lsClientId = Master().Payee().getAPClientID();
+                                if (lsClientId == null || "".equals(lsClientId)) {
+                                    lsClientId = Master().Payee().getClientID();
+                                }
+                                poJSON = loAPTrans.PaymentIssue(lsClientId,
+                                        "",
+                                        Master().getTransactionNo(),
+                                        Master().getTransactionDate(),
+                                        Master().getNetTotal(),
+                                        false);
+                                if ("error".equals(poJSON.get("result"))) {
+                                    return poJSON;
+                                }
+                                System.out.println("-----------------------------------");
+
+
+                                try {
+                                    GLTransaction loGLTrans = new GLTransaction(poGRider, Master().getBranchCode());
+                                    System.out.println("----------JOURNAL PROPOSAL ACCOUNT MASTER / LEDGER----------");
+                                    if (getJournalProposalList() != null) {
+                                        for (int lnJEP = 0; lnJEP < getJournalProposalList().size(); lnJEP++) {
+                                            if (JournalProposal(lnJEP).getEditMode() == EditMode.UPDATE) {
+                                                //GL Transaction Account Ledger
+                                                loGLTrans = new GLTransaction(poGRider, Master().getBranchCode());
+                                                loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
+                                                for (int lnCtr = 0; lnCtr <= JournalProposal(lnJEP).getDetailCount() - 1; lnCtr++) {
+                                                    //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
+                                                    if (JournalProposal(lnJEP).Detail(lnCtr).isReverse()) { //Added by Arsiela 05-16-2026 04:24PM
+                                                        loGLTrans.addDetail(JournalProposal(lnJEP).Master().getBranchCode(),
+                                                                JournalProposal(lnJEP).Detail(lnCtr).getAccountCode(),
+                                                                SQLUtil.toDate(xsDateShort(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE),
+                                                                JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount(),
+                                                                JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+                                                    }
+                                                }
+                                                loGLTrans.saveTransaction();
+                                            }
+                                        }
+                                    }
+                                    System.out.println("-----------------------------------");
+
+                                    System.out.println("----------JOURNAL ACCOUNT MASTER / LEDGER----------");
+                                    if (poJournal != null) {
+                                        if (poJournal.getEditMode() == EditMode.UPDATE) {
                                             //GL Transaction Account Ledger
-                                            loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
+                                            loGLTrans = new GLTransaction(poGRider, Master().getBranchCode());
                                             loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
-                                            for(int lnCtr = 0; lnCtr <= JournalProposal(lnJEP).getDetailCount() - 1; lnCtr++){
-            //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
-                                                if(JournalProposal(lnJEP).Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
-                                                    loGLTrans.addDetail(JournalProposal(lnJEP).Master().getBranchCode(), 
-                                                            JournalProposal(lnJEP).Detail(lnCtr).getAccountCode(),
-                                                            SQLUtil.toDate(xsDateShort(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
-                                                            JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount(), 
-                                                            JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+                                            for (int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++) {
+                                                //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
+                                                if (Journal().Detail(lnCtr).isReverse()) { //Added by Arsiela 05-16-2026 04:24PM
+                                                    loGLTrans.addDetail(Journal().Master().getBranchCode(),
+                                                            Journal().Detail(lnCtr).getAccountCode(),
+                                                            SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE),
+                                                            Journal().Detail(lnCtr).getDebitAmount(),
+                                                            Journal().Detail(lnCtr).getCreditAmount());
                                                 }
                                             }
                                             loGLTrans.saveTransaction();
                                         }
                                     }
+                                    System.out.println("-----------------------------------");
+                                } catch (GuanzonException | SQLException | NullPointerException ex) {
+                                    Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+                                    poJSON.put("result", "error");
+                                    poJSON.put("message", MiscUtil.getException(ex));
+                                    return poJSON;
                                 }
-                                System.out.println("-----------------------------------");
-                                
-                                System.out.println("----------JOURNAL ACCOUNT MASTER / LEDGER----------");
-                                if(poJournal != null){
-                                    if(poJournal.getEditMode() == EditMode.UPDATE){
-                                        //GL Transaction Account Ledger
-                                        loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
-                                        loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
-                                        for(int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++){
-        //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
-                                            if(Journal().Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
-                                                loGLTrans.addDetail(Journal().Master().getBranchCode(), 
-                                                        Journal().Detail(lnCtr).getAccountCode(),
-                                                        SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
-                                                        Journal().Detail(lnCtr).getDebitAmount(), 
-                                                        Journal().Detail(lnCtr).getCreditAmount());
-                                            }
-                                        }
-                                        loGLTrans.saveTransaction();
-                                    }
-                                }
-                                System.out.println("-----------------------------------");
-                            } catch (GuanzonException | SQLException | NullPointerException ex) {
-                                Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
-                                poJSON.put("result", "error");
-                                poJSON.put("message", MiscUtil.getException(ex));
-                                return poJSON;
                             }
                         }
-                        
+
                     } else {
                         poJSON.put("result", "error");
                         poJSON.put("message", "Check info is not set.");
@@ -5059,7 +5078,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                                 poJSON.put("message", "Check No is not set.");
                                 return poJSON;
                             }
-                            
+
                             String lsMaxCheckNo = getMaxCheckNo();
                             if (lsMaxCheckNo.matches("\\d+") && lsCheckNo.matches("\\d+")) {
                                 if(Long.parseLong(lsCheckNo) > Long.parseLong(lsMaxCheckNo)){
@@ -5068,7 +5087,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                             }
                             //set the latest assigned check no
                             poBankAccount.getModel().setCheckNo(lsMaxCheckNo);
-                            poBankAccount.getModel().setLastTransactionDate(poGRider.getServerDate());    
+                            poBankAccount.getModel().setLastTransactionDate(poGRider.getServerDate());
                             poBankAccount.getModel().setModifyingId(poGRider.getUserID());
                             poBankAccount.getModel().setModifiedDate(poGRider.getServerDate());
                             poBankAccount.setWithParentClass(true);
@@ -5110,94 +5129,95 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                     }
                     break;
             }
-            
+
 //            if(Master().getWithTaxTotal() > 0.0000){
-                System.out.println("--------------------------SAVE WITHHOLDING TAX DEDUCTION---------------------------------------------");
-                //Save Withholding Tax Deductions
-                for(int lnCtr = 0; lnCtr <= getWTaxDeductionsCount() - 1;lnCtr++){
-                    if(WTaxDeduction(lnCtr).getEditMode() == EditMode.ADDNEW || WTaxDeduction(lnCtr).getEditMode() == EditMode.UPDATE){
-                        WTaxDeduction(lnCtr).getModel().setSourceCode(getSourceCode());
-                        WTaxDeduction(lnCtr).getModel().setSourceNo(Master().getTransactionNo());
-                        WTaxDeduction(lnCtr).getModel().setModifyingBy(poGRider.getUserID());
-                        WTaxDeduction(lnCtr).getModel().setModifiedDate(poGRider.getServerDate());
-                        WTaxDeduction(lnCtr).setWithParentClass(true);
-                        WTaxDeduction(lnCtr).setWithUI(false);
-                        poJSON = WTaxDeduction(lnCtr).saveRecord();
-                        if ("error".equals((String) poJSON.get("result"))) {
-                            System.out.println("Save Withholding Tax Deduction : " + poJSON.get("message"));
-                            return poJSON;
-                        }
+            System.out.println("--------------------------SAVE WITHHOLDING TAX DEDUCTION---------------------------------------------");
+            //Save Withholding Tax Deductions
+            for(int lnCtr = 0; lnCtr <= getWTaxDeductionsCount() - 1;lnCtr++){
+                if(WTaxDeduction(lnCtr).getEditMode() == EditMode.ADDNEW || WTaxDeduction(lnCtr).getEditMode() == EditMode.UPDATE){
+                    WTaxDeduction(lnCtr).getModel().setSourceCode(getSourceCode());
+                    WTaxDeduction(lnCtr).getModel().setSourceNo(Master().getTransactionNo());
+                    WTaxDeduction(lnCtr).getModel().setModifyingBy(poGRider.getUserID());
+                    WTaxDeduction(lnCtr).getModel().setModifiedDate(poGRider.getServerDate());
+                    WTaxDeduction(lnCtr).setWithParentClass(true);
+                    WTaxDeduction(lnCtr).setWithUI(false);
+                    poJSON = WTaxDeduction(lnCtr).saveRecord();
+                    if ("error".equals((String) poJSON.get("result"))) {
+                        System.out.println("Save Withholding Tax Deduction : " + poJSON.get("message"));
+                        return poJSON;
                     }
                 }
+            }
 //            }
-            
-            System.out.println("--------------------------SAVE OTHER TRANSACTION---------------------------------------------");
-            //Update other linked transaction in DV Detail
-            poJSON = updateLinkedTransactions(Master().getTransactionStatus());
-            if ("error".equals((String) poJSON.get("result"))) {
-                return poJSON;
-            }
-            System.out.println("-----------------------------------------------------------------------");
-            
-            //Save Journal Proposal
-            System.out.println("--------------------------SAVE JOURNAL PROPOSAL---------------------------------------------");
-             poJSON = saveJournalProposal();
-            if ("error".equals((String) poJSON.get("result"))) {
-                paOrigJEP = null;
-                return poJSON;
-            }
-            System.out.println("-----------------------------------------------------------------------");
-            
-            //Save Journal
-            System.out.println("--------------------------SAVE JOURNAL---------------------------------------------");
-            if(poJournal != null){
-                if(poJournal.getEditMode() == EditMode.ADDNEW || poJournal.getEditMode() == EditMode.UPDATE){
-                    poJSON = validateJournal();
-                    boolean lbContinue = (boolean) poJSON.get("continue");
-                    if ("error".equals((String) poJSON.get("result"))) {
-                        poJSON.put("result", "error");
-                        poJSON.put("message", poJSON.get("message").toString());
-                        return poJSON;
-                    } 
-                    if(lbContinue){
-                        poJournal.Master().setSourceNo(Master().getTransactionNo());
-                        poJournal.Master().setModifyingId(poGRider.getUserID());
-                        poJournal.Master().setModifiedDate(poGRider.getServerDate());
-                        poJournal.setWithParent(true);
-                        poJSON = poJournal.SaveTransaction();
+
+            if(!isReplacementOnly(poCheckPayments.getModel().getSourceNo())) {
+                System.out.println("--------------------------SAVE OTHER TRANSACTION---------------------------------------------");
+                //Update other linked transaction in DV Detail
+                poJSON = updateLinkedTransactions(Master().getTransactionStatus());
+                if ("error".equals((String) poJSON.get("result"))) {
+                    return poJSON;
+                }
+                System.out.println("-----------------------------------------------------------------------");
+                //Save Journal Proposal
+                System.out.println("--------------------------SAVE JOURNAL PROPOSAL---------------------------------------------");
+                poJSON = saveJournalProposal();
+                if ("error".equals((String) poJSON.get("result"))) {
+                    paOrigJEP = null;
+                    return poJSON;
+                }
+                System.out.println("-----------------------------------------------------------------------");
+
+                //Save Journal
+                System.out.println("--------------------------SAVE JOURNAL---------------------------------------------");
+                if(poJournal != null){
+                    if(poJournal.getEditMode() == EditMode.ADDNEW || poJournal.getEditMode() == EditMode.UPDATE){
+                        poJSON = validateJournal();
+                        boolean lbContinue = (boolean) poJSON.get("continue");
                         if ("error".equals((String) poJSON.get("result"))) {
-                            System.out.println("Save Journal : " + poJSON.get("message"));
+                            poJSON.put("result", "error");
+                            poJSON.put("message", poJSON.get("message").toString());
                             return poJSON;
                         }
-                    }
-                } else {
+                        if(lbContinue){
+                            poJournal.Master().setSourceNo(Master().getTransactionNo());
+                            poJournal.Master().setModifyingId(poGRider.getUserID());
+                            poJournal.Master().setModifiedDate(poGRider.getServerDate());
+                            poJournal.setWithParent(true);
+                            poJSON = poJournal.SaveTransaction();
+                            if ("error".equals((String) poJSON.get("result"))) {
+                                System.out.println("Save Journal : " + poJSON.get("message"));
+                                return poJSON;
+                            }
+                        }
+                    } else {
 //                    if (poGRider.getUserLevel() > UserRight.ENCODER) {
 //                        poJSON.put("result", "error");
 //                        poJSON.put("message", "Invalid Update mode for Journal.");
 //                        return poJSON;
 //                    }
-                }
-            } else {
+                    }
+                } else {
 //                if (poGRider.getUserLevel() > UserRight.ENCODER) {
 //                    poJSON.put("result", "error");
 //                    poJSON.put("message", "Journal is not set.");
 //                    return poJSON;
 //                }
+                }
             }
             System.out.println("-----------------------------------------------------------------------");
-            
+
             poJSON = updatePaymentsStatus();
             if ("error".equals((String) poJSON.get("result"))) {
                 return poJSON;
             }
-            
+
         } catch (SQLException | GuanzonException | CloneNotSupportedException | ParseException | NullPointerException ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
             poJSON.put("result", "error");
             poJSON.put("message", MiscUtil.getException(ex));
             return poJSON;
         }
-        
+
         //Clear value 
         paOrigJEP = null;
         poJSON.put("result", "success");
@@ -7805,13 +7825,13 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
             poJSON.put("error", "No transactions selected.");
             return poJSON;
         }
-        
+
         for (int lnCtr = 0; lnCtr < fsTransactionNos.size(); lnCtr++) {
             poJSON = OpenTransaction(fsTransactionNos.get(lnCtr));
             if ("error".equals((String) poJSON.get("result"))){
                 return poJSON;
             }
-            
+
             if (!CheckStatus.PrintStatus.PRINTED.equals(Master().CheckPayments().getPrint())) {
                 poJSON = UpdateTransaction();
                 if ("error".equals((String) poJSON.get("result"))){
@@ -7837,26 +7857,26 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 CheckPayments().getModel().setLocation(CheckStatus.PrintStatus.PRINTED);
                 CheckPayments().getModel().setDatePrint(poGRider.getServerDate());
             }
-            
+
             String bank = Master().CheckPayments().Banks().getBankCode();
             String transactionno = fsTransactionNos.get(lnCtr);
             String sPayeeNme = CheckPayments().getModel().Payee().getPayeeName();
             String dCheckDte = CustomCommonUtil.formatDateToMMDDYYYY(Master().CheckPayments().getCheckDate());
-            String nAmountxx = removeComma(String.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(Master().CheckPayments().getAmount(), false))); 
+            String nAmountxx = removeComma(String.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(Master().CheckPayments().getAmount(), false)));
             String xAmountWords = NumberToWords.convertToWords(new BigDecimal(nAmountxx));
-            
+
             if(dCheckDte == null || "".equals(dCheckDte)){
                 poJSON.put("result", "error");
                 poJSON.put("message", "Check Date is not set.");
                 return poJSON;
             }
-            
+
             if(dCheckDte.replace("-", "").length() < 8 ){
                 poJSON.put("result", "error");
                 poJSON.put("message", "Invalid CheckDate.");
                 return poJSON;
             }
-            
+
             String bankCode = getDocumentCode(CheckPayments().getModel().getBankAcountID()); //CheckPayments().getModel().Banks().getBankCode()+"Chk"+;
 //            bankCode = "MBTDSChk";
             if(bankCode == null || "".equals(bankCode)){
@@ -7864,7 +7884,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 poJSON.put("message", "Please configure the document code for bank account.");
                 return poJSON;
             }
-            
+
 //            bankCode = "MBTDSChk";
             System.out.println("===============================================");
             System.out.println("No : " + (lnCtr + 1));
@@ -7874,7 +7894,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
             System.out.println("amountNumeric : " + nAmountxx);
             System.out.println("amountWords : " + xAmountWords);
             System.out.println("===============================================");
-            
+
             DocumentMapping poDocumentMapping = new CashflowControllers(poGRider, logwrapr).DocumentMapping();
             poDocumentMapping.InitTransaction();
             poJSON = poDocumentMapping.OpenTransaction(bankCode);
@@ -7883,22 +7903,28 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 poJSON.put("message", "Please configure the document mapping for "+bankCode+".\n"+ (String) poJSON.get("message"));
                 return poJSON;
             }
-            
+
             // Store transaction for printing
             Transaction transaction = new Transaction(transactionno, sPayeeNme, dCheckDte, nAmountxx, bankCode, new BigDecimal(nAmountxx));
-            
+
             // Now print the voucher using PrinterJob
             if (showPrintPreview(transaction, poDocumentMapping)) {
                 poJSON = PrintCheck(transaction,poDocumentMapping);
                 if ("error".equals((String) poJSON.get("result"))){
                     return poJSON;
                 }
-                
+
                 //Save Disbursement only if check print is not yet printed
                 if (!CheckStatus.PrintStatus.PRINTED.equals(Master().CheckPayments().getPrint())) {
                     pbIsUpdateAmountPaid = true;
                     poJSON = SaveTransaction();
                     if ("error".equals((String) poJSON.get("result"))){
+                        return poJSON;
+                    }
+
+                    poJSON = updateReplaceCheck(transactionno);
+
+                    if ("error".equals(poJSON.get("result"))) {
                         return poJSON;
                     }
                 }
@@ -7908,7 +7934,7 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 return poJSON;
             }
         }
-        
+
         poJSON.put("result", "success");
         poJSON.put("message", "Check printed successfully");
         return poJSON;
@@ -10507,6 +10533,193 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         
         public double getnDetVatAm() {
             return nDetVatAm;
+        }
+    }
+
+    /**
+     * Determines whether the latest check payment transaction is a
+     * replacement-only transaction.
+     *
+     * <p>
+     * The method retrieves the latest transaction with
+     * {@code cTranStat = '3'} for the specified source number. The transaction
+     * is identified as replacement-only when its {@code cIsReplcd} value is
+     * {@code '0'}.
+     * </p>
+     *
+     * <p>
+     * Purpose: Identify replacement-only check payment transactions based on
+     * the replacement indicator stored in {@code cIsReplcd}.
+     * </p>
+     *
+     * @param fsSourceNo source number of the check payment transaction
+     * @return {@code true} if the latest status {@code '3'} transaction has
+     *         {@code cIsReplcd = '0'}; {@code false} otherwise
+     * @throws SQLException if an error occurs while executing the query
+     *                      or retrieving the result set
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-08-22
+     */
+    private boolean isReplacementOnly(String fsSourceNo) throws SQLException {
+        String lsSQL = " SELECT "
+                + "   cIsReplcd "
+                + " FROM check_payments ";
+
+        lsSQL = MiscUtil.addCondition(
+                lsSQL,
+                " sSourceNo = " + SQLUtil.toSQL(fsSourceNo)
+                        + " AND cTranStat = '3' "
+                        + " ORDER BY dModified DESC, sTransNox DESC "
+                        + " LIMIT 1"
+        );
+
+        System.out.println("Executing SQL: " + lsSQL);
+
+        ResultSet loRS = poGRider.executeQuery(lsSQL);
+
+        try {
+            if (!loRS.next()) {
+                return false;
+            }
+
+            return "0".equals(loRS.getString("cIsReplcd"));
+
+        } finally {
+            MiscUtil.close(loRS);
+        }
+    }
+
+    private String getReplaceCheckToUpdate(String fsSourceNo) throws SQLException {
+        String lsSQL = " SELECT "
+                + "   sTransNox "
+                + " FROM check_payments ";
+
+        lsSQL = MiscUtil.addCondition(
+                lsSQL,
+                " sSourceNo = " + SQLUtil.toSQL(fsSourceNo)
+                        + " AND cTranStat = '3' "
+                        + " ORDER BY dModified DESC, sTransNox DESC "
+                        + " LIMIT 1"
+        );
+
+        System.out.println("Executing SQL: " + lsSQL);
+
+        ResultSet loRS = poGRider.executeQuery(lsSQL);
+
+        try {
+            if (!loRS.next()) {
+                return null;
+            }
+
+            return loRS.getString("sTransNox");
+
+        } finally {
+            MiscUtil.close(loRS);
+        }
+    }
+    /**
+     * Updates the check payment transaction associated with a replacement check.
+     * <p>
+     * This method determines whether the current source transaction has an
+     * associated replacement check transaction that requires updating. If a
+     * replacement check transaction is found, the method opens the corresponding
+     * check payment record, starts a database transaction, updates the record,
+     * marks the check payment as replaced, and saves the changes.
+     * </p>
+     *
+     * <p>
+     * If the current transaction is not a replacement transaction, the method
+     * returns a successful result without making any database changes.
+     * </p>
+     *
+     * <p>
+     * All database modifications are performed within a transaction. If any
+     * operation fails, the transaction is rolled back and the corresponding
+     * exception or error result is returned to the caller.
+     * </p>
+     *
+     * @param fsSourceNo
+     *        the source transaction number used to identify the replacement
+     *        check transaction that needs to be updated
+     *
+     * @return a {@link JSONObject} containing the result of the operation.
+     *         The {@code result} property contains {@code "success"} when the
+     *         update is completed successfully. If an operation fails, the
+     *         corresponding error information is returned instead.
+     *
+     * @throws SQLException
+     *         if a database access error occurs while opening, updating,
+     *         or saving the check payment transaction
+     * @throws GuanzonException
+     *         if a business or application-level error occurs during the
+     *         check payment transaction processing
+     * @throws CloneNotSupportedException
+     *         if an object cloning operation required by the underlying
+     *         transaction processing fails
+     *
+     * @author TEEJEI DECELIS
+     */
+
+    public JSONObject updateReplaceCheck(String fsSourceNo)
+            throws SQLException, GuanzonException, CloneNotSupportedException {
+
+        poJSON = new JSONObject();
+
+        String lsCheckTransactionNo = getReplaceCheckToUpdate(fsSourceNo);
+
+        // Current transaction is not a replacement transaction.
+        if (lsCheckTransactionNo == null || lsCheckTransactionNo.trim().isEmpty()) {
+            poJSON.put("result", "success");
+            return poJSON;
+        }
+
+        Model_Check_Payments loCheckTrans
+                = new CashflowModels(poGRider).CheckPayments();
+
+        poJSON = loCheckTrans.openRecord(lsCheckTransactionNo);
+
+        if (!"success".equals((String) poJSON.get("result"))) {
+            return poJSON;
+        }
+
+        try {
+            poGRider.beginTrans(
+                    "UPDATE",
+                    loCheckTrans.getTable(),
+                    SOURCE_CODE,
+                    lsCheckTransactionNo
+            );
+
+            poJSON = loCheckTrans.updateRecord();
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                poGRider.rollbackTrans();
+                return poJSON;
+            }
+
+            poJSON = loCheckTrans.isReplaced(true);
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                poGRider.rollbackTrans();
+                return poJSON;
+            }
+
+            poJSON = loCheckTrans.saveRecord();
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                poGRider.rollbackTrans();
+                return poJSON;
+            }
+
+            poGRider.commitTrans();
+
+            poJSON.put("result", "success");
+            return poJSON;
+
+        } catch (SQLException | GuanzonException e) {
+            poGRider.rollbackTrans();
+            throw e;
         }
     }
 
