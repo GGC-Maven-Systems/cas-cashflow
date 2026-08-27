@@ -235,6 +235,8 @@ public class ReplenishmentRequestTest {
         try {
             JSONObject loJSON = new JSONObject();
             resetController();
+            
+            System.out.println("---------NEW REPLENISHMENT FOR CASH FUND------------");
             startNewTransaction();
 //            poController.isUnitTest(true);
             poController.setWithUI(false);
@@ -246,12 +248,10 @@ public class ReplenishmentRequestTest {
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.getModel().setTransactionStatus(ReplenishmentRequestStatus.OPEN);
             Assert.assertEquals("success", loJSON.get("result"));
-            
             loJSON = poController.getModel().setFundType(Logical.YES);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.getModel().setFundId(psCashFund);
             Assert.assertEquals("success", loJSON.get("result"));
-            
             //load ledger
             loJSON = poController.loadLedger(true);
             Assert.assertEquals("success", loJSON.get("result"));
@@ -321,6 +321,7 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------VOID REPLENISHMENT FOR CASH FUND------------");
             psTransNo = poController.getModel().getTransactionNo();
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
@@ -328,6 +329,7 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------NEW REPLENISHMENT FOR CASH FUND------------");
             //Set back to OPEN
             loJSON = poController.newRecord();
             System.out.println("MESSAGE : " + loJSON.get("message"));
@@ -347,6 +349,7 @@ public class ReplenishmentRequestTest {
             loJSON = poController.SaveRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------APPROVE REPLENISHMENT FOR CASH FUND------------");
             psTransNo = poController.getModel().getTransactionNo();
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
@@ -354,12 +357,15 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------CANCEL REPLENISHMENT FOR CASH FUND------------");
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.CancelRecord();
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            
+            System.out.println("---------NEW REPLENISHMENT FOR CASH FUND------------");
             //Set back to APPROVED
             loJSON = poController.newRecord();
             System.out.println("MESSAGE : " + loJSON.get("message"));
@@ -386,6 +392,7 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------POST REPLENISHMENT FOR CASH FUND------------");
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.PostRecord();
@@ -406,7 +413,8 @@ public class ReplenishmentRequestTest {
             JSONObject loJSON = new JSONObject();
             resetController();
             startNewTransaction();
-//            poController.isUnitTest(true);
+            
+            System.out.println("---------NEW REPLENISHMENT FOR PETTY CASH------------");
             poController.setWithUI(false);
             poController.getModel().setCompanyId(psCompanyId);
             poController.getModel().setIndustryId(psIndustryId);
@@ -491,12 +499,14 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------VOID REPLENISHMENT FOR PETTY CASH------------");
             psTransNo = poController.getModel().getTransactionNo();
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.VoidRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------NEW REPLENISHMENT FOR PETTY CASH------------");
             //Set back to OPEN
             loJSON = poController.newRecord();
             Assert.assertEquals("success", loJSON.get("result"));
@@ -517,16 +527,21 @@ public class ReplenishmentRequestTest {
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------APPROVE REPLENISHMENT FOR PETTY CASH------------");
             psTransNo = poController.getModel().getTransactionNo();
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.ApproveRecord();
+            System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
+            
+            System.out.println("---------CANCEL REPLENISHMENT FOR PETTY CASH------------");
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.CancelRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------NEW REPLENISHMENT FOR PETTY CASH------------");
             //Set back to OPEN
             loJSON = poController.newRecord();
             Assert.assertEquals("success", loJSON.get("result"));
@@ -554,6 +569,7 @@ public class ReplenishmentRequestTest {
             loJSON = poController.ApproveRecord();
             Assert.assertEquals("success", loJSON.get("result"));
             
+            System.out.println("---------POST REPLENISHMENT FOR PETTY CASH------------");
             loJSON = poController.OpenRecord(psTransNo);
             Assert.assertEquals("success", loJSON.get("result"));
             loJSON = poController.PostRecord();
@@ -593,7 +609,7 @@ public class ReplenishmentRequestTest {
             poController.setCompanyId(psCompanyId);
             poController.setIndustryId(psIndustryId);
             System.out.println("---------LOAD TRANSACTION LIST------------");
-            loJSON = poController.loadTransactionList("", "");
+            loJSON = poController.loadTransactionList("", "", true);
             System.out.println("MESSAGE : " + loJSON.get("message"));
             Assert.assertEquals("success", loJSON.get("result"));
             

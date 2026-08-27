@@ -1,5 +1,8 @@
 package ph.com.guanzongroup.cas.cashflow;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -10,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.sql.rowset.CachedRowSet;
@@ -152,6 +156,48 @@ public class ReplenishmentRequest extends Parameter {
     }
     
     /**
+    * Validate approver for the current transaction.
+    *
+    * @return JSONObject containing approval result and message
+    */
+    public JSONObject validateApprover() throws SQLException, GuanzonException{
+        //Check the department of the custodian
+        String lsCustodianDept = "";
+        if(Logical.YES.equals(getModel().getFundType())){
+            lsCustodianDept = checkDepartment("", getModel().CashFund().getCashFundManager());
+        } else{
+            lsCustodianDept = checkDepartment("", getModel().PettyCash().getPettyManager());
+        }
+
+        /**
+        * Approval of the Custodian's Supervisor / Manager
+           ie:
+           if Finance, Finance Manager
+           if Branch, Branch Manager
+        */
+        String lsDepartment = poGRider.getDepartment();
+        if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+            lsDepartment = checkDepartment(psApprover, "");
+        }
+        if(lsCustodianDept.equals(System.getProperty("sys.dept.finance"))){
+            if(!lsDepartment.equals(System.getProperty("sys.dept.finance")) && pbWithUI){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
+                poJSON.put("result", "error" );
+                poJSON.put("message", "User or approving officer is not authorized to approved the record." );
+                return poJSON;
+            }
+        } else {
+            if(!lsDepartment.equals(lsCustodianDept) && pbWithUI){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
+                poJSON.put("result", "error" );
+                poJSON.put("message", "User or approving officer is not authorized to approved the record." );
+                return poJSON;
+            }
+        }
+        
+        poJSON = setJSON("success","success");
+        return poJSON;
+    }
+    
+    /**
     * Checks if a user has an allowed position for a specific transaction status.
     *
     * @param fsUserId user ID
@@ -288,30 +334,9 @@ public class ReplenishmentRequest extends Parameter {
                 return poJSON;
             }
             
-            //Check the department of the custodian
-            String lsCustodianDept = "";
-            if(Logical.YES.equals(getModel().getFundType())){
-                lsCustodianDept = checkDepartment("", getModel().CashFund().getCashFundManager());
-            } else{
-                lsCustodianDept = checkDepartment("", getModel().PettyCash().getPettyManager());
-            }
-            
-            /**
-            * Approval of the Custodian's Supervisor / Manager
-               ie:
-               if Finance, Finance Manager
-               if Branch, Branch Manager
-            */
-            if(lsCustodianDept.equals(System.getProperty("sys.dept.finance"))){
-                String lsDepartment = poGRider.getDepartment();
-                if (poGRider.getUserLevel() <= UserRight.ENCODER) {
-                    lsDepartment = checkDepartment(psApprover, "");
-                }
-                if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
-                    poJSON.put("result", "error" );
-                    poJSON.put("message", "User or approving officer is not authorized to approved the record." );
-                    return poJSON;
-                }
+            poJSON = validateApprover();
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
             }
         }
 
@@ -435,31 +460,10 @@ public class ReplenishmentRequest extends Parameter {
                 if (!isJSONSuccess(poJSON)) {
                     return poJSON;
                 }
-
-                //Check the department of the custodian
-                String lsCustodianDept = "";
-                if(Logical.YES.equals(getModel().getFundType())){
-                    lsCustodianDept = checkDepartment("", getModel().CashFund().getCashFundManager());
-                } else{
-                    lsCustodianDept = checkDepartment("", getModel().PettyCash().getPettyManager());
-                }
-
-                /**
-                * Approval of the Custodian's Supervisor / Manager
-                   ie:
-                   if Finance, Finance Manager
-                   if Branch, Branch Manager
-                */
-                if(lsCustodianDept.equals(System.getProperty("sys.dept.finance"))){
-                    String lsDepartment = poGRider.getDepartment();
-                    if (poGRider.getUserLevel() <= UserRight.ENCODER) {
-                        lsDepartment = checkDepartment(psApprover, "");
-                    }
-                    if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
-                        poJSON.put("result", "error" );
-                        poJSON.put("message", "User or approving officer is not authorized to approved the record." );
-                        return poJSON;
-                    }
+                
+                poJSON = validateApprover();
+                if (!isJSONSuccess(poJSON)) {
+                    return poJSON;
                 }
             }
         }
@@ -530,30 +534,9 @@ public class ReplenishmentRequest extends Parameter {
                 return poJSON;
             }
             
-            //Check the department of the custodian
-            String lsCustodianDept = "";
-            if(Logical.YES.equals(getModel().getFundType())){
-                lsCustodianDept = checkDepartment("", getModel().CashFund().getCashFundManager());
-            } else{
-                lsCustodianDept = checkDepartment("", getModel().PettyCash().getPettyManager());
-            }
-
-            /**
-            * Approval of the Custodian's Supervisor / Manager
-               ie:
-               if Finance, Finance Manager
-               if Branch, Branch Manager
-            */
-            if(lsCustodianDept.equals(System.getProperty("sys.dept.finance"))){
-                String lsDepartment = poGRider.getDepartment();
-                if (poGRider.getUserLevel() <= UserRight.ENCODER) {
-                    lsDepartment = checkDepartment(psApprover, "");
-                }
-                if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){ //Approval of the Custodian's Supervisor / Manager //need to check custodian's supervisor
-                    poJSON.put("result", "error" );
-                    poJSON.put("message", "User or approving officer is not authorized to approved the record." );
-                    return poJSON;
-                }
+            poJSON = validateApprover();
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
             }
         }
 
@@ -879,12 +862,15 @@ public class ReplenishmentRequest extends Parameter {
     /**
     * Loads a list of transactions based on the provided filters.
     * 
+     * @param fsFund
+     * @param fsTransactionNo
+     * @param isPosting
     * @return A {@link JSONObject} indicating "success" if records were loaded, 
     *         otherwise returns an "error" status with a descriptive message.
     * @throws SQLException     If a database access error occurs.
     * @throws GuanzonException If an application-level error occurs during record opening.
     */
-    public JSONObject loadTransactionList(String fsFund, String fsTransactionNo) throws SQLException, GuanzonException {
+    public JSONObject loadTransactionList(String fsFund, String fsTransactionNo, boolean isPosting) throws SQLException, GuanzonException {
         poJSON = new JSONObject();
         paModel = new ArrayList<>();
         if (fsFund == null) { fsFund = ""; }
@@ -923,6 +909,24 @@ public class ReplenishmentRequest extends Parameter {
                     + " (a.cFundType = '1' AND b.sCashFDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + ") "
                     + " OR (a.cFundType <> '1' AND c.sPettyDsc LIKE " + SQLUtil.toSQL("%"+fsFund+"%") + ") "
                     + " )";
+        
+        if(isPosting){
+            List<String> laList = getPaidReplenishment();
+            String lsTransNo = "";
+            if (laList.size() > 1) {
+                for (String list : laList) {
+                    lsTransNo += ", " + SQLUtil.toSQL(list);
+                }
+
+                lsTransNo = "a.sTransNox IN (" + lsTransNo.substring(2) + ")";
+            } else {
+                lsTransNo = "a.sTransNox = " + SQLUtil.toSQL(lsTransNo);
+            }
+            
+            if(lsTransNo != null && !"".equals(lsTransNo)){
+                lsSQL = lsSQL + lsTransNo;
+            }
+        }
         
         lsSQL = lsSQL + " ORDER BY a.dTransact, a.sTransNox ASC ";
         System.out.println("Executing SQL: " + lsSQL);
@@ -963,6 +967,51 @@ public class ReplenishmentRequest extends Parameter {
     public int getTransactionListCount() {
         return this.paModel.size();
     }
+    
+    private List<String> getPaidReplenishment() throws SQLException{
+        List<String> laList = new ArrayList<>();
+        String lsSQL = " SELECT sPayLoadx FROM Check_Transfer_Detail WHERE cReceived = "+ SQLUtil.toSQL(Logical.YES) ;
+        
+        System.out.println("Executing SQL: " + lsSQL);
+        ResultSet loRS = poGRider.executeQuery(lsSQL);
+        try {
+            if (MiscUtil.RecordCount(loRS) > 0) {
+                while(loRS.next()){
+                    if(loRS.getString("sPayLoadx") != null && !"".equals(loRS.getString("sPayLoadx"))){
+                        try {
+                            ObjectMapper mapper = new ObjectMapper();
+                            JsonNode root = mapper.readTree(loRS.getString("sPayLoadx"));
+                            JsonNode requests = root.get("replenishment_request");
+                            for (JsonNode request : requests) {
+                                String lsTransNox = request.asText();
+                                if(lsTransNox != null && !"".equals(lsTransNox)){
+                                    //Check if replenishment request is not yet posted
+                                    Model_Replenishment_Request loObj = new CashflowModels(poGRider).Replenishment_Request();
+                                    poJSON = loObj.openRecord(lsTransNox);
+                                    if(isJSONSuccess(poJSON)){
+                                        if(ReplenishmentRequestStatus.APPROVED.equals(loObj.getTransactionStatus())){
+                                            laList.add(lsTransNox);
+                                            System.out.println("replenishment_request : "+lsTransNox);
+                                        }
+                                    }
+                                }
+                            }
+
+                        } catch (JsonProcessingException | GuanzonException ex) {
+                            Logger.getLogger(getClass().getName())
+                                    .log(Level.SEVERE, MiscUtil.getException(ex), ex);
+                        }
+                    }
+                }
+            }
+            MiscUtil.close(loRS);
+        } catch (SQLException e) {
+            System.out.println("No record loaded.");
+        }
+        
+        return laList;
+    }
+    
     
     /**
     * Loads ledger records
