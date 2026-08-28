@@ -636,9 +636,15 @@ public class ReplenishmentRequestTest {
             poController.setWithUI(false);
             poController.getModel().setCompanyId(psCompanyId);
             poController.getModel().setIndustryId(psIndustryId);
+            
+            //Check default fund
+            poController.setDefaultFund(Logical.YES);
+            poController.setDefaultFund(Logical.NO);
+            
 //            loJSON = poController.SearchFund("",false,false);
 //            System.out.println("MESSAGE : " + loJSON.get("message"));
 //            Assert.assertEquals("success", loJSON.get("result"));
+
             
             poController.setFund("test");
             Assert.assertEquals("test", poController.getfund());

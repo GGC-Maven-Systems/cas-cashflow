@@ -249,6 +249,215 @@ public class ReplenishmentRequest extends Parameter {
         }
         return lsDepartment;
     }
+    
+    public void setDefaultFund(String fsFundType) {
+        try { 
+            if(getEditMode() != EditMode.ADDNEW){
+                return;
+            }
+            String lsSQL = "";
+            String lsCondition = "";
+            String lsFundId = "";
+            if(Logical.YES.equals(fsFundType)){
+                lsSQL = MiscUtil.makeSelect(new CashflowModels(poGRider).CashFund());
+            } else {
+                lsSQL = MiscUtil.makeSelect(new CashflowModels(poGRider).PettyCashMaster());
+            }
+
+            if(psCompanyId != null && !"".equals(psCompanyId)){
+                lsCondition = " sCompnyID = " + SQLUtil.toSQL(psCompanyId);
+            }
+            if(psIndustryId != null && !"".equals(psIndustryId)){
+                if(lsCondition.isEmpty()){
+                    lsCondition = " sIndstCdx = " + SQLUtil.toSQL(psIndustryId);
+                } else {
+                    lsCondition = lsCondition + " AND sIndstCdx = " + SQLUtil.toSQL(psIndustryId);
+                }
+            }
+            if(poGRider.getBranchCode() != null && !"".equals(poGRider.getBranchCode())){
+                if(lsCondition.isEmpty()){
+                    lsCondition = " sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode());
+                } else {
+                    lsCondition = lsCondition + " AND sBranchCD = " + SQLUtil.toSQL(poGRider.getBranchCode());
+                }
+
+            }
+//            if(poGRider.getDepartment() != null && !"".equals(poGRider.getDepartment())){
+//                if(lsCondition.isEmpty()){
+//                    lsCondition = " sDeptIDxx = " + SQLUtil.toSQL(poGRider.getDepartment());
+//                } else {
+//                    lsCondition = lsCondition + " AND sDeptIDxx = " + SQLUtil.toSQL(poGRider.getDepartment());
+//                }
+//            }
+            if(!lsCondition.isEmpty()){
+                lsSQL = MiscUtil.addCondition(lsSQL, lsCondition);
+                lsSQL = lsSQL + " AND DATE(dBegDatex) <= " + SQLUtil.toSQL(xsDateShort(poGRider.getServerDate()));
+            } else {
+                lsSQL = MiscUtil.addCondition(lsSQL, " DATE(dBegDatex) <= " + SQLUtil.toSQL(xsDateShort(poGRider.getServerDate())));
+            }
+            if(Logical.YES.equals(fsFundType)){
+                lsSQL = lsSQL + " AND sCashFMgr = " + SQLUtil.toSQL(poGRider.getEmployeeNo());
+            } else {
+                lsSQL = lsSQL + " AND sPettyMgr = " + SQLUtil.toSQL(poGRider.getEmployeeNo());
+            }
+
+            System.out.println("Executing SQL: " + lsSQL);
+            ResultSet loRS = poGRider.executeQuery(lsSQL);
+            try {
+                if (MiscUtil.RecordCount(loRS) == 1) {
+                    if(loRS.next()){
+                        if(Logical.YES.equals(fsFundType)){
+                            if(loRS.getString("sCashFIDx") != null && !"".equals(loRS.getString("sCashFIDx"))){
+                                lsFundId = loRS.getString("sCashFIDx");
+                            }
+                        } else {
+                            if(loRS.getString("sPettyIDx") != null && !"".equals(loRS.getString("sPettyIDx"))){
+                                lsFundId = loRS.getString("sPettyIDx");
+                            }
+                        }
+
+                    }
+                }
+                MiscUtil.close(loRS);
+            } catch (SQLException e) {
+                System.out.println("No record loaded.");
+            }
+            if(getModel().getFundId() == null || "".equals(getModel().getFundId())){
+                getModel().setFundId(lsFundId);
+            }
+        
+        } catch (SQLException ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+        }
+    }
+    
+    public JSONObject checkRemainingLedger(String fsStatus, String ledgerNo, Date transactDate, boolean isRemove) throws SQLException, GuanzonException {
+        poJSON = new JSONObject();
+        paCashFundLedger.sort(
+            Comparator.comparing(Model_Cash_Fund_Ledger::getTransactionDate)
+                      .thenComparing(Model_Cash_Fund_Ledger::getLedgerNo)
+        );
+        paPettyCashLedger.sort(
+            Comparator.comparing(Model_PettyCashLedger::getTransactionDate)
+                      .thenComparing(Model_PettyCashLedger::getLedgerNo)
+        );
+        String lsStatus = "void";
+        if(ReplenishmentRequestStatus.CANCELLED.equals(lsStatus)){
+            lsStatus = "cancel";
+        }
+        String lsSQL = "";
+        ResultSet loRS;
+        if(Logical.YES.equals(getModel().getFundType())){
+            lsSQL = " SELECT" +
+                "  a.sCashFIDx," +
+                "  MAX(a.nLedgerNo) AS nLedgerNo," +
+                "  a.dTransact," +
+                "  a.nCrdtAmtx," +
+                "  a.sBatchNox," +
+                "  a.cReversex," +
+                "  b.sTransNox," +
+                "  b.cTranStat " +
+                " FROM CashFund_Ledger a " +
+                " LEFT JOIN Replenishment_Request b ON b.sTransNox = a.sBatchNox " +
+                " WHERE ( b.cTranStat =  " + SQLUtil.toSQL(ReplenishmentRequestStatus.APPROVED)
+                + " OR b.cTranStat = " + SQLUtil.toSQL(ReplenishmentRequestStatus.OPEN)
+                + " ) AND a.sCashFIDx = " + SQLUtil.toSQL(getModel().getFundId())
+                + " AND a.cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
+                + " AND a.nCrdtAmtx > 0.0000 ";
+            lsSQL = lsSQL + " ORDER BY dTransact DESC LIMIT 1 ";
+            System.out.println("Executing SQL: " + lsSQL);
+            loRS = poGRider.executeQuery(lsSQL);
+            if (MiscUtil.RecordCount(loRS) <= 0) {
+                poJSON = setJSON("success", "No record found.");
+                return poJSON;
+            }
+
+            if (loRS.next()) {
+                if(loRS.getDate("dTransact") != null){
+                    LocalDate loDate = strToDate(xsDateShort(loRS.getDate("dTransact")));
+                    if(isRemove){
+                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(transactDate));
+                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > Integer.valueOf(ledgerNo)){
+                                poJSON = setJSON("error", "Cannot remove the ledger no "+ledgerNo+"."
+                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+                                                            + "\nalready has ledger entries with a subsequent series following the ledger no "+ledgerNo+".");
+                                return poJSON;
+                            }
+                        }
+                    } else {
+                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(CashFundLedgerList(getCashFundLedgerListCount() - 1).getTransactionDate()));
+                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > CashFundLedgerList(getCashFundLedgerListCount() - 1).getLedgerNo()){
+                                poJSON = setJSON("error", "Cannot " + lsStatus + " the transaction."
+                                                        + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+                                                        + "\nalready has ledger entries with a subsequent series following the ledger entries of the selected transaction.");
+                                return poJSON;
+                            }
+                        }
+                    }
+                }
+            }
+            MiscUtil.close(loRS);
+        } else {
+            lsSQL = " SELECT" +
+                "  a.sPettyIDx," +
+                "  MAX(a.nLedgerNo) AS nLedgerNo," +
+                "  a.dTransact," +
+                "  a.nCrdtAmtx," +
+                "  a.sBatchNox," +
+                "  a.cReversex," +
+                "  b.sTransNox," +
+                "  b.cTranStat " +
+                " FROM PettyCash_Ledger a " +
+                " LEFT JOIN Replenishment_Request b ON b.sTransNox = a.sBatchNox " +
+                " WHERE ( b.cTranStat =  " + SQLUtil.toSQL(ReplenishmentRequestStatus.APPROVED)
+                + " OR b.cTranStat = " + SQLUtil.toSQL(ReplenishmentRequestStatus.OPEN)
+                + " ) AND a.sPettyIDx = " + SQLUtil.toSQL(getModel().getFundId())
+                + " AND a.cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
+                + " AND a.nCrdtAmtx > 0.0000 ";
+            lsSQL = lsSQL + " ORDER BY dTransact DESC LIMIT 1 ";
+            System.out.println("Executing SQL: " + lsSQL);
+            loRS = poGRider.executeQuery(lsSQL);
+            if (MiscUtil.RecordCount(loRS) <= 0) {
+                poJSON = setJSON("success", "No record found.");
+                return poJSON;
+            }
+
+            if (loRS.next()) {
+                if(loRS.getDate("dTransact") != null){
+                    LocalDate loDate = strToDate(xsDateShort(loRS.getDate("dTransact")));
+                    
+                    if(isRemove){
+                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(transactDate));
+                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > Integer.valueOf(ledgerNo)){
+                                poJSON = setJSON("error", "Cannot remove the ledger no "+ledgerNo+"."
+                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+                                                            + "\nalready has ledger entries with a subsequent series following the ledger no "+ledgerNo+".");
+                                return poJSON;
+                            }
+                        }
+                    } else {
+                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(PettyCashLedgerList(getPettyCashLedgerListCount() - 1).getTransactionDate()));
+                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > PettyCashLedgerList(getPettyCashLedgerListCount() - 1).getLedgerNo()){
+                                poJSON = setJSON("error", "Cannot " + lsStatus + " the transaction."
+                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+                                                            + "\nalready has ledger entries with a subsequent series following the ledger entries of the selected transaction.");
+                                return poJSON;
+                            }
+                        }
+                    }
+                }
+            }
+            MiscUtil.close(loRS);
+        }
+        
+        poJSON = setJSON("success", "success");
+        return poJSON;
+    }
+    
     /**
      * Completely clears the current transaction state.
      * 
@@ -327,6 +536,12 @@ public class ReplenishmentRequest extends Parameter {
             poJSON = setJSON("error", "Record was already approved.");
             return poJSON;
         }
+
+        //validator
+        poJSON = isEntryOkay();
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
         
         if(!pbWthParent){
             psApprover = poGRider.getUserID();
@@ -339,12 +554,6 @@ public class ReplenishmentRequest extends Parameter {
             if (!isJSONSuccess(poJSON)) {
                 return poJSON;
             }
-        }
-
-        //validator
-        poJSON = isEntryOkay();
-        if (!isJSONSuccess(poJSON)) {
-            return poJSON;
         }
         
         poGRider.beginTrans("UPDATE STATUS", "ApproveRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
@@ -406,6 +615,12 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
+        //Do not allow to cancel replenishment when other remaining ledger have batch no
+        poJSON = checkRemainingLedger(lsStatus, "0",poGRider.getServerDate(),false);
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+        
         poGRider.beginTrans("UPDATE STATUS", "VoidRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
         
         //Removed batch no for saved ledger
@@ -453,6 +668,18 @@ public class ReplenishmentRequest extends Parameter {
             poJSON = setJSON("error", "Record was already cancelled.");
             return poJSON;
         }
+
+        //validator
+        poJSON = isEntryOkay();
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
+        
+        //Do not allow to cancel replenishment when other remaining ledger have batch no
+        poJSON = checkRemainingLedger(lsStatus, "0",poGRider.getServerDate(),false);
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
         
         if(ReplenishmentRequestStatus.APPROVED.equals(poModel.getTransactionStatus())){
             if(!pbWthParent){
@@ -467,12 +694,6 @@ public class ReplenishmentRequest extends Parameter {
                     return poJSON;
                 }
             }
-        }
-
-        //validator
-        poJSON = isEntryOkay();
-        if (!isJSONSuccess(poJSON)) {
-            return poJSON;
         }
         
         poGRider.beginTrans("UPDATE STATUS", "CancelRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
@@ -527,6 +748,12 @@ public class ReplenishmentRequest extends Parameter {
             poJSON = setJSON("error", "Record was already posted.");
             return poJSON;
         }
+
+        //validator
+        poJSON = isEntryOkay();
+        if (!isJSONSuccess(poJSON)) {
+            return poJSON;
+        }
         
         if(!pbWthParent){
             psApprover = poGRider.getUserID();
@@ -539,12 +766,6 @@ public class ReplenishmentRequest extends Parameter {
             if (!isJSONSuccess(poJSON)) {
                 return poJSON;
             }
-        }
-
-        //validator
-        poJSON = isEntryOkay();
-        if (!isJSONSuccess(poJSON)) {
-            return poJSON;
         }
         
         poGRider.beginTrans("UPDATE STATUS", "PostRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
@@ -650,35 +871,34 @@ public class ReplenishmentRequest extends Parameter {
         String lsSQL = getSQ_Browse();
         
         String lsCondition = "";
+        if (psRecdStat.length() > 1) {
+            for (int lnCtr = 0; lnCtr <= psRecdStat.length() - 1; lnCtr++) {
+                lsCondition += ", " + SQLUtil.toSQL(Character.toString(psRecdStat.charAt(lnCtr)));
+            }
+
+            lsCondition = "a.cTranStat IN (" + lsCondition.substring(2) + ")";
+        } else {
+            lsCondition = "a.cTranStat = " + SQLUtil.toSQL(psRecdStat);
+        }
+        
         if(psCompanyId != null && !"".equals(psCompanyId)){
 //                lsCondition = " AND IF(a.cFundType = '1',b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + " ,c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ")";
-            lsCondition = " AND ("
+            lsCondition = lsCondition + " AND ("
                         + " (a.cFundType = '1' AND b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
                         + " OR (a.cFundType <> '1' AND c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
                         + " )";
             
         }
         if(psIndustryId != null && !"".equals(psIndustryId)){
-            if(lsCondition.isEmpty()){
-//                lsCondition = " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
-                lsCondition = " AND ("
-                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " )";
-                
-            } else {
 //                lsCondition = lsCondition + " AND IF(a.cFundType = '1',b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + " ,c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ")";
-                lsCondition = lsCondition + " AND ("
-                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " )";
-            }
+            lsCondition = lsCondition + " AND ("
+                        + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                        + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                        + " )";
+            
         }
         
-        if(!lsCondition.isEmpty()){
-            lsSQL = lsSQL + " " + lsCondition;
-        }
-        
+        lsSQL = MiscUtil.addCondition(lsSQL, lsCondition );
         System.out.println("MySQL : " + lsSQL);
         
         if(pbWithUI){
@@ -748,11 +968,12 @@ public class ReplenishmentRequest extends Parameter {
             if (Logical.YES.equals(getModel().getFundType())) {
                 CashFund loCashFund = loController.CashFund();
                 loCashFund.setRecordStatus(RecordStatus.ACTIVE);
-                loCashFund.setDepartmentId(poGRider.getDepartment());
+//                loCashFund.setDepartmentId(poGRider.getDepartment());
                 loCashFund.setBranchCode(poGRider.getBranchCode());
                 loCashFund.setCompanyId(psCompanyId);
                 loCashFund.setIndustryId(psIndustryId);
-
+                loCashFund.setCustodianId(poGRider.getEmployeeNo());
+                loCashFund.setCashFundUse(true);
                 poJSON = loCashFund.searchRecord(value, byCode);
                 if (isJSONSuccess(poJSON)) {
                     getModel().setFundId(loCashFund.getModel().getCashFundId());
@@ -760,11 +981,12 @@ public class ReplenishmentRequest extends Parameter {
             } else {
                 PettyCash loPettyCash = loController.PettyCash();
                 loPettyCash.setRecordStatus(RecordStatus.ACTIVE);
-                loPettyCash.setDepartmentId(poGRider.getDepartment());
+//                loPettyCash.setDepartmentId(poGRider.getDepartment());
                 loPettyCash.setBranchCode(poGRider.getBranchCode());
                 loPettyCash.setCompanyId(psCompanyId);
                 loPettyCash.setIndustryId(psIndustryId);
-
+                loPettyCash.setCustodianId(poGRider.getEmployeeNo());
+                loPettyCash.setPettyCashUse(true);
                 poJSON = loPettyCash.searchRecord(value, byCode);
                 if (isJSONSuccess(poJSON)) {
                     getModel().setFundId(loPettyCash.getModel().getPettyId());
@@ -796,7 +1018,7 @@ public class ReplenishmentRequest extends Parameter {
         String lsFund = "";
         String lsCondition = "";
         if(psCompanyId != null && !"".equals(psCompanyId)){
-            lsCondition = " AND ("
+            lsCondition = " ("
                         + " (a.cFundType = '1' AND b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
                         + " OR (a.cFundType <> '1' AND c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
                         + " )";
@@ -804,7 +1026,7 @@ public class ReplenishmentRequest extends Parameter {
         }
         if(psIndustryId != null && !"".equals(psIndustryId)){
             if(lsCondition.isEmpty()){
-                lsCondition = " AND ("
+                lsCondition = " ("
                             + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
                             + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
                             + " )";
@@ -817,12 +1039,11 @@ public class ReplenishmentRequest extends Parameter {
             }
         }
         
-        if(!lsCondition.isEmpty()){
-            lsSQL = lsSQL + " " + lsCondition;
-        }
         
-        System.out.println("MySQL : " + lsSQL);
+        lsSQL = MiscUtil.addCondition(lsSQL, lsCondition );
         if(pbWithUI){
+            lsSQL = lsSQL + " GROUP BY a.sFundIdxx, a.cFundType ";
+            System.out.println("MySQL : " + lsSQL);
             poJSON = ShowDialogFX.Search(poGRider,
                     lsSQL,
                     value,
@@ -838,6 +1059,7 @@ public class ReplenishmentRequest extends Parameter {
                 return poJSON;
             }
         } else {
+            System.out.println("MySQL : " + lsSQL);
             ResultSet loRS = poGRider.executeQuery(lsSQL);
             try {
                 if (MiscUtil.RecordCount(loRS) > 0) {
@@ -876,28 +1098,31 @@ public class ReplenishmentRequest extends Parameter {
         paModel = new ArrayList<>();
         if (fsFund == null) { fsFund = ""; }
         if (fsTransactionNo == null) { fsTransactionNo = ""; }
-        
         String lsCondition = "";
+
+        if (psRecdStat.length() > 1) {
+            for (int lnCtr = 0; lnCtr <= psRecdStat.length() - 1; lnCtr++) {
+                lsCondition += ", " + SQLUtil.toSQL(Character.toString(psRecdStat.charAt(lnCtr)));
+            }
+
+            lsCondition = " AND a.cTranStat IN (" + lsCondition.substring(2) + ")";
+        } else {
+            lsCondition = " AND a.cTranStat = " + SQLUtil.toSQL(psRecdStat);
+        }
+        
         if(psCompanyId != null && !"".equals(psCompanyId)){
-            lsCondition = " AND ("
+            lsCondition = lsCondition + " AND ("
                         + " (a.cFundType = '1' AND b.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
                         + " OR (a.cFundType <> '1' AND c.sCompnyID = " + SQLUtil.toSQL(psCompanyId) + ") "
                         + " )";
             
         }
         if(psIndustryId != null && !"".equals(psIndustryId)){
-            if(lsCondition.isEmpty()){
-                lsCondition = " AND ("
-                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " )";
-                
-            } else {
-                lsCondition = lsCondition + " AND ("
-                            + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
-                            + " )";
-            }
+            lsCondition = lsCondition + " AND ("
+                        + " (a.cFundType = '1' AND b.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                        + " OR (a.cFundType <> '1' AND c.sIndstCdx = " + SQLUtil.toSQL(psIndustryId) + ") "
+                        + " )";
+            
         }
         
         String lsSQL = MiscUtil.addCondition(getSQ_Browse(), " a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransactionNo + "%") );
@@ -929,7 +1154,7 @@ public class ReplenishmentRequest extends Parameter {
                 return poJSON;
             }
         } else {
-            lsSQL = lsSQL + " AND d.cProcessd = " + SQLUtil.toSQL(Logical.NO);
+            lsSQL = lsSQL + " AND (d.cProcessd IS NULL OR d.cProcessd = " + SQLUtil.toSQL(Logical.NO) + ") ";
         }
         
         lsSQL = lsSQL + " ORDER BY a.dTransact, a.sTransNox ASC ";
@@ -1073,7 +1298,9 @@ public class ReplenishmentRequest extends Parameter {
                 );
             }
             
-            lsSQL = lsSQL + " GROUP BY sCashFIDx, sSourceCD, sSourceNo ORDER BY dTransact, nLedgerNo ASC ";
+            lsSQL = lsSQL + " AND nCrdtAmtx > 0.0000"
+//                    + " GROUP BY sCashFIDx, sSourceCD, sSourceNo "
+                    + " ORDER BY dTransact, nLedgerNo ASC ";
             System.out.println("Executing SQL: " + lsSQL);
             loRS = poGRider.executeQuery(lsSQL);
             if (MiscUtil.RecordCount(loRS) <= 0) {
@@ -1113,7 +1340,9 @@ public class ReplenishmentRequest extends Parameter {
                     + " AND cReversex = "  + SQLUtil.toSQL(PettyCashStatus.Reverse.INCLUDE)
                 );
             }
-            lsSQL = lsSQL + " GROUP BY sPettyIDx, sSourceCD, sSourceNo ORDER BY dTransact, nLedgerNo ASC ";
+            lsSQL = lsSQL + " AND nCrdtAmtx > 0.0000 "
+//                    + " GROUP BY sPettyIDx, sSourceCD, sSourceNo "
+                    + " ORDER BY dTransact, nLedgerNo ASC ";
             System.out.println("Executing SQL: " + lsSQL);
             loRS = poGRider.executeQuery(lsSQL);
             if (MiscUtil.RecordCount(loRS) <= 0) {
@@ -1706,19 +1935,7 @@ public class ReplenishmentRequest extends Parameter {
      */
     @Override
     public String getSQ_Browse() {
-        String lsCondition = "";
-
-        if (psRecdStat.length() > 1) {
-            for (int lnCtr = 0; lnCtr <= psRecdStat.length() - 1; lnCtr++) {
-                lsCondition += ", " + SQLUtil.toSQL(Character.toString(psRecdStat.charAt(lnCtr)));
-            }
-
-            lsCondition = "a.cTranStat IN (" + lsCondition.substring(2) + ")";
-        } else {
-            lsCondition = "a.cTranStat = " + SQLUtil.toSQL(psRecdStat);
-        }
-
-        String lsSQL = "SELECT " +
+        return "SELECT " +
                         "  a.sTransNox, " +
                         "  a.dTransact, " +
                         "  a.cFundType, " +
@@ -1735,14 +1952,12 @@ public class ReplenishmentRequest extends Parameter {
                         "  b.sIndstCdx, " +
                         "  b.sCompnyID, " +
                         "  c.sIndstCdx, " +
-                        "  c.sCompnyID, " +
-                        "  d.sTransNox  " +
+                        "  c.sCompnyID " +
                         " FROM Replenishment_Request a " +
                         " LEFT JOIN CashFund b ON b.sCashFIDx = a.sFundIdxx " +
                         " LEFT JOIN PettyCash c ON c.sPettyIDx = a.sFundIdxx " +
                         " LEFT JOIN Payment_Request_Master d ON d.sSourceNo = a.sTransNox AND d.sSourceCd = " + SQLUtil.toSQL(ReplenishmentRequestStatus.SourceCode.REPLENISHMENT);
 
-        return MiscUtil.addCondition(lsSQL, lsCondition);
     }
     
     protected CachedRowSet getStatusHistoryTest() throws SQLException {
@@ -1923,5 +2138,11 @@ public class ReplenishmentRequest extends Parameter {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         String date = sdf.format(fdValue);
         return date;
+    }
+    
+    private LocalDate strToDate(String val) {
+        DateTimeFormatter date_formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate localDate = LocalDate.parse(val, date_formatter);
+        return localDate;
     }
 }
