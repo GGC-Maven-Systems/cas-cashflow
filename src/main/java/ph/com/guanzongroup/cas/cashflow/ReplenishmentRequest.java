@@ -331,132 +331,133 @@ public class ReplenishmentRequest extends Parameter {
         }
     }
     
-    public JSONObject checkRemainingLedger(String fsStatus, String ledgerNo, Date transactDate, boolean isRemove) throws SQLException, GuanzonException {
-        poJSON = new JSONObject();
-        paCashFundLedger.sort(
-            Comparator.comparing(Model_Cash_Fund_Ledger::getTransactionDate)
-                      .thenComparing(Model_Cash_Fund_Ledger::getLedgerNo)
-        );
-        paPettyCashLedger.sort(
-            Comparator.comparing(Model_PettyCashLedger::getTransactionDate)
-                      .thenComparing(Model_PettyCashLedger::getLedgerNo)
-        );
-        String lsStatus = "void";
-        if(ReplenishmentRequestStatus.CANCELLED.equals(lsStatus)){
-            lsStatus = "cancel";
-        }
-        String lsSQL = "";
-        ResultSet loRS;
-        if(Logical.YES.equals(getModel().getFundType())){
-            lsSQL = " SELECT" +
-                "  a.sCashFIDx," +
-                "  MAX(a.nLedgerNo) AS nLedgerNo," +
-                "  a.dTransact," +
-                "  a.nCrdtAmtx," +
-                "  a.sBatchNox," +
-                "  a.cReversex," +
-                "  b.sTransNox," +
-                "  b.cTranStat " +
-                " FROM CashFund_Ledger a " +
-                " LEFT JOIN Replenishment_Request b ON b.sTransNox = a.sBatchNox " +
-                " WHERE ( b.cTranStat =  " + SQLUtil.toSQL(ReplenishmentRequestStatus.APPROVED)
-                + " OR b.cTranStat = " + SQLUtil.toSQL(ReplenishmentRequestStatus.OPEN)
-                + " ) AND a.sCashFIDx = " + SQLUtil.toSQL(getModel().getFundId())
-                + " AND a.cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
-                + " AND a.nCrdtAmtx > 0.0000 ";
-            lsSQL = lsSQL + " ORDER BY dTransact DESC LIMIT 1 ";
-            System.out.println("Executing SQL: " + lsSQL);
-            loRS = poGRider.executeQuery(lsSQL);
-            if (MiscUtil.RecordCount(loRS) <= 0) {
-                poJSON = setJSON("success", "No record found.");
-                return poJSON;
-            }
-
-            if (loRS.next()) {
-                if(loRS.getDate("dTransact") != null){
-                    LocalDate loDate = strToDate(xsDateShort(loRS.getDate("dTransact")));
-                    if(isRemove){
-                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(transactDate));
-                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
-                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > Integer.valueOf(ledgerNo)){
-                                poJSON = setJSON("error", "Cannot remove the ledger no "+ledgerNo+"."
-                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
-                                                            + "\nalready has ledger entries with a subsequent series following the ledger no "+ledgerNo+".");
-                                return poJSON;
-                            }
-                        }
-                    } else {
-                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(CashFundLedgerList(getCashFundLedgerListCount() - 1).getTransactionDate()));
-                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
-                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > CashFundLedgerList(getCashFundLedgerListCount() - 1).getLedgerNo()){
-                                poJSON = setJSON("error", "Cannot " + lsStatus + " the transaction."
-                                                        + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
-                                                        + "\nalready has ledger entries with a subsequent series following the ledger entries of the selected transaction.");
-                                return poJSON;
-                            }
-                        }
-                    }
-                }
-            }
-            MiscUtil.close(loRS);
-        } else {
-            lsSQL = " SELECT" +
-                "  a.sPettyIDx," +
-                "  MAX(a.nLedgerNo) AS nLedgerNo," +
-                "  a.dTransact," +
-                "  a.nCrdtAmtx," +
-                "  a.sBatchNox," +
-                "  a.cReversex," +
-                "  b.sTransNox," +
-                "  b.cTranStat " +
-                " FROM PettyCash_Ledger a " +
-                " LEFT JOIN Replenishment_Request b ON b.sTransNox = a.sBatchNox " +
-                " WHERE ( b.cTranStat =  " + SQLUtil.toSQL(ReplenishmentRequestStatus.APPROVED)
-                + " OR b.cTranStat = " + SQLUtil.toSQL(ReplenishmentRequestStatus.OPEN)
-                + " ) AND a.sPettyIDx = " + SQLUtil.toSQL(getModel().getFundId())
-                + " AND a.cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
-                + " AND a.nCrdtAmtx > 0.0000 ";
-            lsSQL = lsSQL + " ORDER BY dTransact DESC LIMIT 1 ";
-            System.out.println("Executing SQL: " + lsSQL);
-            loRS = poGRider.executeQuery(lsSQL);
-            if (MiscUtil.RecordCount(loRS) <= 0) {
-                poJSON = setJSON("success", "No record found.");
-                return poJSON;
-            }
-
-            if (loRS.next()) {
-                if(loRS.getDate("dTransact") != null){
-                    LocalDate loDate = strToDate(xsDateShort(loRS.getDate("dTransact")));
-                    
-                    if(isRemove){
-                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(transactDate));
-                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
-                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > Integer.valueOf(ledgerNo)){
-                                poJSON = setJSON("error", "Cannot remove the ledger no "+ledgerNo+"."
-                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
-                                                            + "\nalready has ledger entries with a subsequent series following the ledger no "+ledgerNo+".");
-                                return poJSON;
-                            }
-                        }
-                    } else {
-                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(PettyCashLedgerList(getPettyCashLedgerListCount() - 1).getTransactionDate()));
-                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
-                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > PettyCashLedgerList(getPettyCashLedgerListCount() - 1).getLedgerNo()){
-                                poJSON = setJSON("error", "Cannot " + lsStatus + " the transaction."
-                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
-                                                            + "\nalready has ledger entries with a subsequent series following the ledger entries of the selected transaction.");
-                                return poJSON;
-                            }
-                        }
-                    }
-                }
-            }
-            MiscUtil.close(loRS);
-        }
-        
-        poJSON = setJSON("success", "success");
-        return poJSON;
-    }
+    //Disabled - no need to check as per ma'am grace allow to cancel / void as long as the replenishment is not yet posted
+//    public JSONObject checkRemainingLedger(String fsStatus, String ledgerNo, Date transactDate, boolean isRemove) throws SQLException, GuanzonException {
+//        poJSON = new JSONObject();
+//        paCashFundLedger.sort(
+//            Comparator.comparing(Model_Cash_Fund_Ledger::getTransactionDate)
+//                      .thenComparing(Model_Cash_Fund_Ledger::getLedgerNo)
+//        );
+//        paPettyCashLedger.sort(
+//            Comparator.comparing(Model_PettyCashLedger::getTransactionDate)
+//                      .thenComparing(Model_PettyCashLedger::getLedgerNo)
+//        );
+//        String lsStatus = "void";
+//        if(ReplenishmentRequestStatus.CANCELLED.equals(lsStatus)){
+//            lsStatus = "cancel";
+//        }
+//        String lsSQL = "";
+//        ResultSet loRS;
+//        if(Logical.YES.equals(getModel().getFundType())){
+//            lsSQL = " SELECT" +
+//                "  a.sCashFIDx," +
+//                "  MAX(a.nLedgerNo) AS nLedgerNo," +
+//                "  a.dTransact," +
+//                "  a.nCrdtAmtx," +
+//                "  a.sBatchNox," +
+//                "  a.cReversex," +
+//                "  b.sTransNox," +
+//                "  b.cTranStat " +
+//                " FROM CashFund_Ledger a " +
+//                " LEFT JOIN Replenishment_Request b ON b.sTransNox = a.sBatchNox " +
+//                " WHERE ( b.cTranStat =  " + SQLUtil.toSQL(ReplenishmentRequestStatus.APPROVED)
+//                + " OR b.cTranStat = " + SQLUtil.toSQL(ReplenishmentRequestStatus.OPEN)
+//                + " ) AND a.sCashFIDx = " + SQLUtil.toSQL(getModel().getFundId())
+//                + " AND a.cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
+//                + " AND a.nCrdtAmtx > 0.0000 ";
+//            lsSQL = lsSQL + " ORDER BY dTransact DESC LIMIT 1 ";
+//            System.out.println("Executing SQL: " + lsSQL);
+//            loRS = poGRider.executeQuery(lsSQL);
+//            if (MiscUtil.RecordCount(loRS) <= 0) {
+//                poJSON = setJSON("success", "No record found.");
+//                return poJSON;
+//            }
+//
+//            if (loRS.next()) {
+//                if(loRS.getDate("dTransact") != null){
+//                    LocalDate loDate = strToDate(xsDateShort(loRS.getDate("dTransact")));
+//                    if(isRemove){
+//                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(transactDate));
+//                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+//                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > Integer.valueOf(ledgerNo)){
+//                                poJSON = setJSON("error", "Cannot remove the ledger no "+ledgerNo+"."
+//                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+//                                                            + "\nalready has ledger entries with a subsequent series following the ledger no "+ledgerNo+".");
+//                                return poJSON;
+//                            }
+//                        }
+//                    } else {
+//                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(CashFundLedgerList(getCashFundLedgerListCount() - 1).getTransactionDate()));
+//                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+//                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > CashFundLedgerList(getCashFundLedgerListCount() - 1).getLedgerNo()){
+//                                poJSON = setJSON("error", "Cannot " + lsStatus + " the transaction."
+//                                                        + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+//                                                        + "\nalready has ledger entries with a subsequent series following the ledger entries of the selected transaction.");
+//                                return poJSON;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            MiscUtil.close(loRS);
+//        } else {
+//            lsSQL = " SELECT" +
+//                "  a.sPettyIDx," +
+//                "  MAX(a.nLedgerNo) AS nLedgerNo," +
+//                "  a.dTransact," +
+//                "  a.nCrdtAmtx," +
+//                "  a.sBatchNox," +
+//                "  a.cReversex," +
+//                "  b.sTransNox," +
+//                "  b.cTranStat " +
+//                " FROM PettyCash_Ledger a " +
+//                " LEFT JOIN Replenishment_Request b ON b.sTransNox = a.sBatchNox " +
+//                " WHERE ( b.cTranStat =  " + SQLUtil.toSQL(ReplenishmentRequestStatus.APPROVED)
+//                + " OR b.cTranStat = " + SQLUtil.toSQL(ReplenishmentRequestStatus.OPEN)
+//                + " ) AND a.sPettyIDx = " + SQLUtil.toSQL(getModel().getFundId())
+//                + " AND a.cReversex = "  + SQLUtil.toSQL(CashFundStatus.Reverse.INCLUDE)
+//                + " AND a.nCrdtAmtx > 0.0000 ";
+//            lsSQL = lsSQL + " ORDER BY dTransact DESC LIMIT 1 ";
+//            System.out.println("Executing SQL: " + lsSQL);
+//            loRS = poGRider.executeQuery(lsSQL);
+//            if (MiscUtil.RecordCount(loRS) <= 0) {
+//                poJSON = setJSON("success", "No record found.");
+//                return poJSON;
+//            }
+//
+//            if (loRS.next()) {
+//                if(loRS.getDate("dTransact") != null){
+//                    LocalDate loDate = strToDate(xsDateShort(loRS.getDate("dTransact")));
+//                    
+//                    if(isRemove){
+//                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(transactDate));
+//                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+//                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > Integer.valueOf(ledgerNo)){
+//                                poJSON = setJSON("error", "Cannot remove the ledger no "+ledgerNo+"."
+//                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+//                                                            + "\nalready has ledger entries with a subsequent series following the ledger no "+ledgerNo+".");
+//                                return poJSON;
+//                            }
+//                        }
+//                    } else {
+//                        LocalDate loMaxLedgerDate = strToDate(xsDateShort(PettyCashLedgerList(getPettyCashLedgerListCount() - 1).getTransactionDate()));
+//                        if(loDate.isBefore(loMaxLedgerDate) || loDate.isEqual(loMaxLedgerDate)){
+//                            if(Integer.valueOf(loRS.getString("nLedgerNo")) > PettyCashLedgerList(getPettyCashLedgerListCount() - 1).getLedgerNo()){
+//                                poJSON = setJSON("error", "Cannot " + lsStatus + " the transaction."
+//                                                            + "\n\nA subsequent replenishment <" + loRS.getString("sTransNox") + ">"
+//                                                            + "\nalready has ledger entries with a subsequent series following the ledger entries of the selected transaction.");
+//                                return poJSON;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            MiscUtil.close(loRS);
+//        }
+//        
+//        poJSON = setJSON("success", "success");
+//        return poJSON;
+//    }
     
     /**
      * Completely clears the current transaction state.
@@ -615,11 +616,12 @@ public class ReplenishmentRequest extends Parameter {
             return poJSON;
         }
         
+        //Disabled - no need to check as per ma'am grace allow to cancel / void as long as the replenishment is not yet posted
         //Do not allow to cancel replenishment when other remaining ledger have batch no
-        poJSON = checkRemainingLedger(lsStatus, "0",poGRider.getServerDate(),false);
-        if (!isJSONSuccess(poJSON)) {
-            return poJSON;
-        }
+//        poJSON = checkRemainingLedger(lsStatus, "0",poGRider.getServerDate(),false);
+//        if (!isJSONSuccess(poJSON)) {
+//            return poJSON;
+//        }
         
         poGRider.beginTrans("UPDATE STATUS", "VoidRecord", ReplenishmentRequestStatus.SourceCode.REPLENISHMENT, getModel().getTransactionNo());
         
@@ -674,12 +676,12 @@ public class ReplenishmentRequest extends Parameter {
         if (!isJSONSuccess(poJSON)) {
             return poJSON;
         }
-        
+        //Disabled - no need to check as per ma'am grace allow to cancel / void as long as the replenishment is not yet posted
         //Do not allow to cancel replenishment when other remaining ledger have batch no
-        poJSON = checkRemainingLedger(lsStatus, "0",poGRider.getServerDate(),false);
-        if (!isJSONSuccess(poJSON)) {
-            return poJSON;
-        }
+//        poJSON = checkRemainingLedger(lsStatus, "0",poGRider.getServerDate(),false);
+//        if (!isJSONSuccess(poJSON)) {
+//            return poJSON;
+//        }
         
         if(ReplenishmentRequestStatus.APPROVED.equals(poModel.getTransactionStatus())){
             if(!pbWthParent){
