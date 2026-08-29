@@ -38,6 +38,7 @@ public class PettyCash extends Parameter {
     public String psCompanyId = "";
     public String psBranchCode = "";
     public String psDepartmentId = "";
+    public String psCustodian = "";
 
     Model_PettyCash poModel;
     public List<Model> paLedger;
@@ -95,6 +96,15 @@ public class PettyCash extends Parameter {
 
     public void setDepartmentId(String departmentId) {
         psDepartmentId = departmentId;
+    }
+    
+    public void setCustodianId(String custodianId) {
+        psCustodian = custodianId;
+    }
+    
+    boolean pbIsPettyCashUse = false;
+    public void setPettyCashUse(boolean fbIsUsing){
+        pbIsPettyCashUse = fbIsUsing;
     }
 
     /**
@@ -439,9 +449,22 @@ public class PettyCash extends Parameter {
                 lsCondition = lsCondition + " AND a.sDeptIDxx = " + SQLUtil.toSQL(psDepartmentId);
             }
         }
+        if(psCustodian != null && !"".equals(psCustodian)){
+            if(lsCondition.isEmpty()){
+                lsCondition = " AND a.sPettyMgr = " + SQLUtil.toSQL(psCustodian);
+            } else {
+                lsCondition = lsCondition + " AND a.sPettyMgr = " + SQLUtil.toSQL(psCustodian);
+            }
+        }
         if (!lsCondition.isEmpty()) {
             lsSQL = lsSQL + " " + lsCondition;
         }
+        
+        //if searching is for cash fund use: Petty Cash Disbursement
+        if(pbIsPettyCashUse){
+            lsSQL = lsSQL + " AND DATE(a.dBegDatex) <= " + SQLUtil.toSQL(xsDateShort(poGRider.getServerDate()));
+        }
+        
         System.out.println("MySQL : " + lsSQL);
         poJSON = ShowDialogFX.Search(poGRider,
                 lsSQL,

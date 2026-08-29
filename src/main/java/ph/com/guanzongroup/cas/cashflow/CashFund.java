@@ -37,6 +37,7 @@ public class CashFund extends Parameter {
     public String psCompanyId = "";
     public String psBranchCode = "";
     public String psDepartmentId = "";
+    public String psCustodian = "";
     public String psApprover = "";
     
     Model_Cash_Fund poModel;
@@ -86,6 +87,7 @@ public class CashFund extends Parameter {
     public void setCompanyId(String companyId) { psCompanyId = companyId; }
     public void setBranchCode(String branchCode) { psBranchCode = branchCode; }
     public void setDepartmentId(String departmentId) { psDepartmentId = departmentId; }
+    public void setCustodianId(String custodianId) { psCustodian = custodianId; }
     
     /**
     * Creates a JSONObject with "result" and "message" fields.
@@ -499,6 +501,13 @@ public class CashFund extends Parameter {
                 lsCondition = " AND a.sDeptIDxx = " + SQLUtil.toSQL(psDepartmentId);
             } else {
                 lsCondition = lsCondition + " AND a.sDeptIDxx = " + SQLUtil.toSQL(psDepartmentId);
+            }
+        }
+        if(psCustodian != null && !"".equals(psCustodian)){
+            if(lsCondition.isEmpty()){
+                lsCondition = " AND a.sCashFMgr = " + SQLUtil.toSQL(psCustodian);
+            } else {
+                lsCondition = lsCondition + " AND a.sCashFMgr = " + SQLUtil.toSQL(psCustodian);
             }
         }
         if(!lsCondition.isEmpty()){

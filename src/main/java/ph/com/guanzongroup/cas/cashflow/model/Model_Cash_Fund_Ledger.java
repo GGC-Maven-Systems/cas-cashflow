@@ -104,6 +104,14 @@ public class Model_Cash_Fund_Ledger extends Model {
         return (String) getValue("sSourceNo");
     }
 
+    public JSONObject setBatchNo(String batchNo) {
+        return setValue("sBatchNox", batchNo);
+    }
+
+    public String getBatchNo() {
+        return (String) getValue("sBatchNox");
+    }
+
     public JSONObject isReverse(boolean isReverse) {
         return setValue("cReversex", isReverse ? "+" : "-");
     }

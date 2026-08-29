@@ -914,6 +914,7 @@ public class PettyCashDisbursement extends Transaction {
         object.setCompanyId(Master().getCompanyId());
         object.setBranchCode(Master().getBranchCode());
         object.setDepartmentId(Master().getDepartmentRequest());
+        object.setPettyCashUse(true);
         poJSON = object.searchRecord(value, byCode);
         if (isJSONSuccess(poJSON)) {
             Master().setPettyId(object.getModel().getPettyId());

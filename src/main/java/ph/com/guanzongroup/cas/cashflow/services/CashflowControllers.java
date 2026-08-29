@@ -37,6 +37,7 @@ import ph.com.guanzongroup.cas.cashflow.PettyCashDisbursement;
 import ph.com.guanzongroup.cas.cashflow.RecurringExpense;
 import ph.com.guanzongroup.cas.cashflow.RecurringExpenseSchedule;
 import ph.com.guanzongroup.cas.cashflow.RecurringIssuance;
+import ph.com.guanzongroup.cas.cashflow.ReplenishmentRequest;
 import ph.com.guanzongroup.cas.cashflow.SOATagging;
 import ph.com.guanzongroup.cas.cashflow.SubClass.Disbursement_PRF;
 import ph.com.guanzongroup.cas.cashflow.TransactionAccountChart;
@@ -758,7 +759,24 @@ public class CashflowControllers {
         return poPettyCashDisbursement;
     }
     
-    
+    public ReplenishmentRequest ReplenishmentRequest() throws SQLException, GuanzonException {
+        if (poGRider == null) {
+            poLogWrapper.severe("CashFlowcontrollers.ReplenishmentRequest: Application driver is not set.");
+            return null;
+        }
+
+        if (poReplenishmentRequest != null) {
+            return poReplenishmentRequest;
+        }
+
+        poReplenishmentRequest = new ReplenishmentRequest();
+        poReplenishmentRequest.setApplicationDriver(poGRider);
+        poReplenishmentRequest.setWithParentClass(false);
+        poReplenishmentRequest.setLogWrapper(poLogWrapper);
+        poReplenishmentRequest.initialize();
+        poReplenishmentRequest.newRecord();
+        return poReplenishmentRequest;
+    }
     
     @Override
     protected void finalize() throws Throwable {
@@ -801,6 +819,7 @@ public class CashflowControllers {
             poCashLiquidation = null;
             poCashDisbursement = null;
             poPettyCashDisbursement = null;
+            poReplenishmentRequest = null;
             poLogWrapper = null;
             poGRider = null;
         } finally {
@@ -850,4 +869,5 @@ public class CashflowControllers {
     private CashLiquidation poCashLiquidation;
     private CashDisbursement poCashDisbursement;
     private PettyCashDisbursement poPettyCashDisbursement;
+    private ReplenishmentRequest poReplenishmentRequest;
 }

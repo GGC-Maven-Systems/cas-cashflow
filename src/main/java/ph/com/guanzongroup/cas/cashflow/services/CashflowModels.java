@@ -46,6 +46,7 @@ import ph.com.guanzongroup.cas.cashflow.model.Model_Recurring_Expense;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Recurring_Expense_Payment_Monitor;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Recurring_Expense_Schedule;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Recurring_Issuance;
+import ph.com.guanzongroup.cas.cashflow.model.Model_Replenishment_Request;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Transaction_Account_Chart;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Withholding_Tax;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Withholding_Tax_Deductions;
@@ -871,6 +872,23 @@ public class CashflowModels {
         return poJournalDetailProposal;
     }
     
+    public Model_Replenishment_Request Replenishment_Request(){
+        if (poGRider == null){
+            System.err.println("CashflowModels.Replenishment_Request: Application driver is not set.");
+            return null;
+        }
+        
+        if (poReplenishmentRequest == null){
+            poReplenishmentRequest = new Model_Replenishment_Request();
+            poReplenishmentRequest.setApplicationDriver(poGRider);
+            poReplenishmentRequest.setXML("Model_Replenishment_Request");
+            poReplenishmentRequest.setTableName("Replenishment_Request");
+            poReplenishmentRequest.initialize();
+        }
+
+        return poReplenishmentRequest;
+    }
+    
     
     @Override
     protected void finalize() throws Throwable {
@@ -913,6 +931,7 @@ public class CashflowModels {
             poPettyCashDisbursementDetail = null;
             poJournalMasterProposal = null;
             poJournalDetailProposal = null;
+            poReplenishmentRequest = null;
 
             poGRider = null;
         } finally {
@@ -970,4 +989,5 @@ public class CashflowModels {
     private Model_PettyCashLedger poPettyCashFundLedger;
     private Model_PettyCash_Disbursement poPettyCashDisbursement;
     private Model_PettyCash_Disbursement_Detail poPettyCashDisbursementDetail;
+    private Model_Replenishment_Request poReplenishmentRequest;
 }
