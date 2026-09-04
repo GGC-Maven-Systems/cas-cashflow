@@ -1810,7 +1810,7 @@ public class ReplenishmentRequest extends Parameter {
             lsPayeeName = getModel().CashFund().Custodian().getCompanyName();
         } else {
             lsPayee = getModel().PettyCash().getPettyManager();
-            lsFund = "Petty Cash"+ getModel().PettyCash().getDescription();
+            lsFund = "Petty Cash "+ getModel().PettyCash().getDescription();
             lsIndustryId = getModel().PettyCash().getIndustryId();
             lsCompanyId = getModel().PettyCash().getCompanyId();
             lsPayeeName = getModel().PettyCash().Custodian().getCompanyName();
