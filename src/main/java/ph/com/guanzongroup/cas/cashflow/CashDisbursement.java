@@ -71,6 +71,7 @@ import org.guanzon.appdriver.constant.RecordStatus;
 import org.guanzon.appdriver.constant.UserRight;
 import org.guanzon.appdriver.iface.GValidator;
 import org.guanzon.appdriver.token.RequestAccess;
+import org.guanzon.cas.inv.InvTransCons;
 import org.guanzon.cas.parameter.Branch;
 import org.guanzon.cas.parameter.Department;
 import org.guanzon.cas.parameter.Industry;
@@ -1044,22 +1045,149 @@ public class CashDisbursement extends Transaction {
             loTrans.InitTransaction(Master().getCashFundId(), Master().getBranchCode(), Master().getDepartmentRequest());
             loTrans.Disbursement(Master().getTransactionNo(), transDate,  Master().getTransactionTotal(), false);
             
-            System.out.println("----------ACCOUNT MASTER / LEDGER----------");
-            //GL Transaction Account Ledger
             GLTransaction loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
-            loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
-            for(int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++){
-//                if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
-                if(Journal().Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
-                    loGLTrans.addDetail(Journal().Master().getBranchCode(), 
-                            Journal().Detail(lnCtr).getAccountCode(),
-                            SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
-                            Journal().Detail(lnCtr).getDebitAmount(), 
-                            Journal().Detail(lnCtr).getCreditAmount());
-                }
+            System.out.println("----------JOURNAL PROPOSAL ACCOUNT MASTER / LEDGER----------");
+
+            List<Model_Journal_Detail_Proposal> loList = new ArrayList<>();
+            boolean lbMatch = false;
+            if(getJournalProposalList() != null){
+                //Group Journal Proposal Based on the same Branch Code, Account Code and Detail Date
+                for(int lnJEP = 0; lnJEP < getJournalProposalList().size(); lnJEP++){
+//                    if(JournalProposal(lnJEP).getEditMode() == EditMode.UPDATE){
+                        lbMatch = false;
+                        for(int lnCtr = 0; lnCtr <= JournalProposal(lnJEP).getDetailCount() - 1; lnCtr++){
+                            if(JournalProposal(lnJEP).Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
+                                for(Model_Journal_Detail_Proposal loModel : loList){
+                                    if(loModel.getAccountCode().equals(JournalProposal(lnJEP).Detail(lnCtr).getAccountCode())){
+                                        if(xsDateShort(loModel.getForMonthOf()).equals(xsDateShort(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf()))){
+                                            Model_Journal_Master_Proposal loJEPMaster = new CashflowModels(poGRider).Journal_Master_Proposal();
+                                            poJSON = loJEPMaster.openRecord(loModel.getTransactionNo());
+                                            if ("error".equals((String) poJSON.get("result"))) {
+                                                return poJSON;
+                                            }         
+                                            if(loJEPMaster.getBranchCode().equals(JournalProposal(lnJEP).Master().getBranchCode())){
+                                                loModel.setCreditAmount(loModel.getCreditAmount() + JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+                                                loModel.setDebitAmount(loModel.getDebitAmount()+ JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount());
+                                                lbMatch = true;
+                                            }
+
+                                        }
+                                    }
+                                }
+
+                                if(!lbMatch){
+                                    loList.add(new CashflowModels(poGRider).Journal_Detail_Proposal());
+                                    loList.get(loList.size()-1).setTransactionNo(JournalProposal(lnJEP).Detail(lnCtr).getTransactionNo());
+                                    loList.get(loList.size()-1).setAccountCode(JournalProposal(lnJEP).Detail(lnCtr).getAccountCode());
+                                    loList.get(loList.size()-1).setCreditAmount(JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+                                    loList.get(loList.size()-1).setDebitAmount(JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount());
+                                    loList.get(loList.size()-1).setForMonthOf(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf());
+                                }
+                            }
+                        }
+                    }
+//                }
             }
-            loGLTrans.saveTransaction();
+
+
             System.out.println("-----------------------------------");
+
+            System.out.println("----------JOURNAL ACCOUNT MASTER / LEDGER----------");
+
+            loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
+            loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
+
+            if(poJournal != null){
+//                if(poJournal.getEditMode() == EditMode.UPDATE){
+                    for(int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++){
+                        if(Journal().Detail(lnCtr).isReverse()){
+                            lbMatch = false;
+                            for(Model_Journal_Detail_Proposal loModel : loList){
+                                Model_Journal_Master_Proposal loJEPMaster = new CashflowModels(poGRider).Journal_Master_Proposal();
+                                poJSON = loJEPMaster.openRecord(loModel.getTransactionNo());
+                                if ("error".equals((String) poJSON.get("result"))) {
+                                    return poJSON;
+                                } 
+
+                                if(loJEPMaster.getBranchCode().equals(Journal().Master().getBranchCode())){
+                                    if(loModel.getAccountCode().equals(Journal().Detail(lnCtr).getAccountCode())){
+                                        if(xsDateShort(loModel.getForMonthOf()).equals(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()))){
+                                            lbMatch = true;
+                                            loModel.setCreditAmount(loModel.getCreditAmount() + Journal().Detail(lnCtr).getCreditAmount());
+                                            loModel.setDebitAmount(loModel.getDebitAmount()+ Journal().Detail(lnCtr).getDebitAmount());
+                                        }
+                                    }
+                                }
+                            }
+
+                            if(!lbMatch){
+
+                                System.out.println("Branch Code : " + Journal().Master().getBranchCode());
+                                System.out.println("Account Code : " + Journal().Detail(lnCtr).getAccountCode());
+                                System.out.println("Date : " + Journal().Detail(lnCtr).getForMonthOf());
+                                System.out.println("Debit Amount : " + Journal().Detail(lnCtr).getDebitAmount());
+                                System.out.println("Credit Amount : " + Journal().Detail(lnCtr).getCreditAmount());
+                                
+                                //GL Transaction Account Ledger
+                                loGLTrans.addDetail(Journal().Master().getBranchCode(), 
+                                            Journal().Detail(lnCtr).getAccountCode(),
+                                            SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
+                                            Journal().Detail(lnCtr).getDebitAmount(), 
+                                            Journal().Detail(lnCtr).getCreditAmount());
+                            }
+                        }
+                    }
+//                }
+            }
+            System.out.println("-----------------------------------");
+
+
+            //Generate Account Ledger 
+            for(Model_Journal_Detail_Proposal loModel : loList){
+                if(loModel.getTransactionNo() != null && !"".equals(loModel.getTransactionNo())){
+                    Model_Journal_Master_Proposal loJEPMaster = new CashflowModels(poGRider).Journal_Master_Proposal();
+                    poJSON = loJEPMaster.openRecord(loModel.getTransactionNo());
+                    if ("error".equals((String) poJSON.get("result"))) {
+                        return poJSON;
+                    } 
+                    
+                    System.out.println("Branch Code : " + loJEPMaster.getBranchCode());
+                    System.out.println("Account Code : " + loModel.getAccountCode());
+                    System.out.println("Date : " + loModel.getForMonthOf());
+                    System.out.println("Debit Amount : " + loModel.getDebitAmount());
+                    System.out.println("Credit Amount : " + loModel.getCreditAmount());
+
+                    //GL Transaction Account Ledger
+                    loGLTrans.addDetail(loJEPMaster.getBranchCode(), 
+                                    loModel.getAccountCode(),
+                                    SQLUtil.toDate(xsDateShort(loModel.getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
+                                    loModel.getDebitAmount(), 
+                                    loModel.getCreditAmount());
+                }
+
+            }
+
+            poJSON = loGLTrans.saveTransaction();
+            if ("Failed".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            } 
+            
+//            System.out.println("----------ACCOUNT MASTER / LEDGER----------");
+//            //GL Transaction Account Ledger
+//            GLTransaction loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
+//            loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
+//            for(int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++){
+////                if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
+//                if(Journal().Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
+//                    loGLTrans.addDetail(Journal().Master().getBranchCode(), 
+//                            Journal().Detail(lnCtr).getAccountCode(),
+//                            SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
+//                            Journal().Detail(lnCtr).getDebitAmount(), 
+//                            Journal().Detail(lnCtr).getCreditAmount());
+//                }
+//            }
+//            loGLTrans.saveTransaction();
+//            System.out.println("-----------------------------------");
             
         } catch (SQLException | GuanzonException ex) {
             Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
@@ -2306,6 +2434,7 @@ public class CashDisbursement extends Transaction {
         MiscUtil.close(loRS);
         return poJSON;
     }
+    
     /**
     * Loads a list of liquidated cash advances that have not yet been linked to a cash disbursement.
     * 
@@ -2353,7 +2482,7 @@ public class CashDisbursement extends Transaction {
         }
 
         while (loRS.next()) {
-            Model_Cash_Advance loObject = new CashflowModels(poGRider).CashAdvanceMaster();
+           Model_Cash_Advance loObject = new CashflowModels(poGRider).CashAdvanceMaster();
             poJSON = loObject.openRecord(loRS.getString("sTransNox"));
             if (isJSONSuccess(poJSON)) {
                 paCashAdvances.add((Model) loObject);
@@ -2364,6 +2493,259 @@ public class CashDisbursement extends Transaction {
         MiscUtil.close(loRS);
         return poJSON;
     }
+//    /**
+//    * Loads a list of liquidated cash advances that have not yet been linked to a cash disbursement.
+//    * 
+//    * <p>This method filters records based on industry, payee, and transaction number. 
+//    * It specifically excludes cash advances that are already present in the current 
+//    * master table to prevent duplicate processing.</p>
+//    * 
+//    * @param fsIndustry The industry description to filter by.
+//    * @param fsPayee    The payee name keyword to filter by.
+//    * @param fsTransNo  The transaction number keyword to filter by.
+//    * @return A {@link JSONObject} indicating "success" if records were found and loaded 
+//    *         into {@code paCashAdvances}, otherwise returns an "error" status.
+//    * @throws SQLException     If a database access error occurs.
+//    * @throws GuanzonException If an application-level error occurs while opening records.
+//    */
+//    public JSONObject loadCashAdvanceList(String fsIndustry, String fsPayee, String fsTransNo) throws SQLException, GuanzonException {
+//        poJSON = new JSONObject();
+//        paCashAdvances = new ArrayList<>();
+//        if (fsIndustry == null) { fsIndustry = ""; }
+//        if (fsPayee == null) { fsPayee = ""; }
+//        if (fsTransNo == null) { fsTransNo = ""; }
+//        
+//        String lsSQL = MiscUtil.addCondition(cashAdvanceSQL(),
+//                " a.sCompnyID = " + SQLUtil.toSQL(psCompanyId)
+//                + " AND c.sDescript LIKE " + SQLUtil.toSQL("%" + fsIndustry + "%")
+//                + " AND e.sCompnyNm LIKE " + SQLUtil.toSQL("%" + fsPayee + "%")
+//                + " AND a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransNo + "%")
+//                + " AND a.cTranStat = " + SQLUtil.toSQL(CashAdvanceStatus.LIQUIDATED)
+//            );
+//        
+//        lsSQL = lsSQL 
+//                + " AND a.sTransNox NOT IN ( SELECT sSourceNo FROM " + Master().getTable()
+//                + " WHERE sSourceNo =  a.sTransNox "
+//                + " AND sSourceCd = " + SQLUtil.toSQL(CashDisbursementStatus.SourceCode.CASHADVANCE)
+//                + " AND cTranStat != " + SQLUtil.toSQL(CashDisbursementStatus.VOID)
+//                + " AND cTranStat != " + SQLUtil.toSQL(CashDisbursementStatus.CANCELLED)
+//                + " )";
+//        lsSQL = lsSQL + " UNION ";
+//        lsSQL = lsSQL + prfSQL();
+//        lsSQL = lsSQL + " WHERE a.sCompnyID = " + SQLUtil.toSQL(psCompanyId)
+//                + " AND c.sDescript LIKE " + SQLUtil.toSQL("%" + fsIndustry + "%")
+//                + " AND e.sPayeeNme LIKE " + SQLUtil.toSQL("%" + fsPayee + "%")
+//                + " AND a.sTransNox LIKE " + SQLUtil.toSQL("%" + fsTransNo + "%")
+//                + " AND a.cTranStat = " + SQLUtil.toSQL(PaymentRequestStatus.CONFIRMED)
+//                + " AND a.sSourceCd = " + SQLUtil.toSQL(InvTransCons.PURCHASE_ORDER)
+//                + " AND h.sTermCode = 'M0W2003'" ;
+//        
+//        lsSQL = lsSQL + " ORDER BY dTransact ASC ";
+//        System.out.println("Executing SQL: " + lsSQL);
+//        ResultSet loRS = poGRider.executeQuery(lsSQL);
+//        if (MiscUtil.RecordCount(loRS) <= 0) {
+//            poJSON = setJSON("error", "No record found.");
+//            return poJSON;
+//        }
+//
+////        while (loRS.next()) {
+////           Model_Cash_Advance loObject = new CashflowModels(poGRider).CashAdvanceMaster();
+////            poJSON = loObject.openRecord(loRS.getString("sTransNox"));
+////            if (isJSONSuccess(poJSON)) {
+////                paCashAdvances.add((Model) loObject);
+////            } else {
+////                return poJSON;
+////            }
+////        }
+//        
+//        
+//        int lnctr = 0;
+//        JSONArray dataArray = new JSONArray();
+//        while (loRS.next()) {            
+//            JSONObject record = new JSONObject();
+//            record.put("sTransNox", loRS.getString("sTransNox"));
+//            record.put("sBranchNme", loRS.getString("sBranchNm"));
+//            record.put("dTransact", loRS.getDate("dTransact"));
+//            record.put("sCashFIDx", loRS.getString("sCashFIDx"));
+//            record.put("sCompanyx", loRS.getString("sCompanyx"));
+//            record.put("sIndustry", loRS.getString("sIndustry"));
+//            record.put("sDeptName", loRS.getString("sDeptName"));
+//            record.put("sPayeexxx", loRS.getString("sPayeexxx"));
+//            record.put("sCashFund", loRS.getString("sCashFund"));
+//            record.put("sTranType", loRS.getString("sTranType"));
+//
+//            dataArray.add(record);
+//            lnctr++;
+//        }
+//        MiscUtil.close(loRS);
+//        if (lnctr > 0) {
+//            poJSON.put("result", "success");
+//            poJSON.put("message", "Record(s) loaded successfully.");
+//            poJSON.put("data", dataArray);
+//        } else {
+//            poJSON.put("result", "error");
+//            poJSON.put("message", "No records found.");
+//            poJSON.put("data", new JSONArray());
+//        }
+//        
+//        return poJSON;
+//    }
+    /**
+    * Populates the current transaction's master and detail records using data from a specific Cash Advance.
+    * 
+    * <p>This method retrieves the Cash Advance master and its non-reversed details, maps them to the 
+    * current object, sets the source reference, and recomputes all transaction totals.</p>
+    * 
+    * @param fsTransNo The transaction number of the source Cash Advance record.
+    * @return A {@link JSONObject} indicating "success" or an "error" if the records cannot be loaded.
+    * @throws SQLException If a database access error occurs.
+    * @throws GuanzonException If an application-level error occurs during data mapping.
+    * @throws CloneNotSupportedException If an error occurs while duplicating record models.
+    */
+    public JSONObject populateDetail(String fsTransNo, String fsType) throws SQLException, GuanzonException, CloneNotSupportedException{
+        poJSON = new JSONObject();
+        
+        if(getEditMode() != EditMode.ADDNEW){
+            poJSON = setJSON("error", "Invalid update mode.\nUnable to populate detail.");
+            return poJSON;
+        }
+        
+        String lsIndustyId = "";
+        String lsCompanyId = "";
+        String lsBranchCode = "";
+        String lsFundId = "";
+        String lsClientId = "";
+        String lsPayeeName = "";
+        String lsSourceNo = "";
+        String lsSourceCode = "";
+        String lsDepartmentId = "";
+        if("PRF".equals(fsType)){
+//            String lsCashDisbursement = existCashDisbursement(fsTransNo, CashDisbursementStatus.SourceCode.CASHADVANCE);
+//            if(lsCashDisbursement != null && !"".equals(lsCashDisbursement)){
+//                poJSON = setJSON("error", "The selected cash advance has already been processed with a cash disbursement.\nKindly refer to Cash Disbursement No. <" + lsCashDisbursement + ">.");
+//                return poJSON;
+//            }
+
+            Model_Payment_Request_Master loMaster = new CashflowModels(poGRider).PaymentRequestMaster();
+            poJSON = loMaster.openRecord(fsTransNo);
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+
+            Model_Payment_Request_Detail loDetail = new CashflowModels(poGRider).PaymentRequestDetail();
+            String lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(loDetail),
+                    " sTransNox = " + SQLUtil.toSQL(fsTransNo)
+                    + " AND cReversex = " + SQLUtil.toSQL(CashAdvanceStatus.Reverse.INCLUDE)
+                );
+
+            lsSQL = lsSQL + " ORDER BY nEntryNox ASC ";
+            System.out.println("Executing SQL: " + lsSQL);
+            ResultSet loRS = poGRider.executeQuery(lsSQL);
+            if (MiscUtil.RecordCount(loRS) <= 0) {
+                poJSON = setJSON("error", "No payment request detail found.");
+                return poJSON;
+            }
+
+            removeDetails(); // Remove all details
+
+            while (loRS.next()) {
+                poJSON = loDetail.openRecord(loRS.getString("sTransNox"),loRS.getInt("nEntryNox"));
+                if (!isJSONSuccess(poJSON)) {
+                    return poJSON;
+                }
+                AddDetail();
+                System.out.println("Detail Count : " + getDetailCount());
+                Detail(getDetailCount()-1).setReferNo("");
+                Detail(getDetailCount()-1).setAmount(loDetail.getNetTotal());
+                Detail(getDetailCount()-1).setDetailVatExempt(loDetail.getNetTotal());
+                Detail(getDetailCount()-1).setEntryNo(getDetailCount());
+            }
+            MiscUtil.close(loRS);
+            
+            //Populate Master
+            lsIndustyId = loMaster.getIndustryID();
+            lsCompanyId = loMaster.getCompanyID();
+            lsBranchCode = loMaster.getBranchCode();
+//            lsFundId = loMaster.getCashFundId();
+            lsClientId = loMaster.Payee().getClientID();
+            lsPayeeName = loMaster.Payee().getPayeeName();
+            lsSourceNo = loMaster.getTransactionNo();
+            lsSourceCode = CashDisbursementStatus.SourceCode.PAYMENTREQUEST;
+            lsDepartmentId = loMaster.getDepartmentID();
+        
+        } else {
+            String lsCashDisbursement = existCashDisbursement(fsTransNo, CashDisbursementStatus.SourceCode.CASHADVANCE);
+            if(lsCashDisbursement != null && !"".equals(lsCashDisbursement)){
+                poJSON = setJSON("error", "The selected cash advance has already been processed with a cash disbursement.\nKindly refer to Cash Disbursement No. <" + lsCashDisbursement + ">.");
+                return poJSON;
+            }
+
+            Model_Cash_Advance loMaster = new CashflowModels(poGRider).CashAdvanceMaster();
+            poJSON = loMaster.openRecord(fsTransNo);
+            if (!isJSONSuccess(poJSON)) {
+                return poJSON;
+            }
+
+            Model_Cash_Advance_Detail loDetail = new CashflowModels(poGRider).CashAdvanceDetail();
+            String lsSQL = MiscUtil.addCondition(MiscUtil.makeSelect(loDetail),
+                    " sTransNox = " + SQLUtil.toSQL(fsTransNo)
+                    + " AND cReversex = " + SQLUtil.toSQL(CashAdvanceStatus.Reverse.INCLUDE)
+                );
+
+            lsSQL = lsSQL + " ORDER BY nEntryNox ASC ";
+            System.out.println("Executing SQL: " + lsSQL);
+            ResultSet loRS = poGRider.executeQuery(lsSQL);
+            if (MiscUtil.RecordCount(loRS) <= 0) {
+                poJSON = setJSON("error", "No cash advance detail found.");
+                return poJSON;
+            }
+
+            removeDetails(); // Remove all details
+
+            while (loRS.next()) {
+                poJSON = loDetail.openRecord(loRS.getString("sTransNox"),loRS.getInt("nEntryNox"));
+                if (!isJSONSuccess(poJSON)) {
+                    return poJSON;
+                }
+                AddDetail();
+                System.out.println("Detail Count : " + getDetailCount());
+                Detail(getDetailCount()-1).setReferNo(loDetail.getORNo());
+                Detail(getDetailCount()-1).setAmount(loDetail.getTransactionAmount());
+                Detail(getDetailCount()-1).setDetailVatExempt(loDetail.getTransactionAmount());
+                Detail(getDetailCount()-1).setEntryNo(getDetailCount());
+            }
+            MiscUtil.close(loRS);
+            
+            //Populate Master
+            lsIndustyId = loMaster.getIndustryId();
+            lsCompanyId = loMaster.getCompanyId();
+            lsBranchCode = loMaster.getBranchCode();
+            lsFundId = loMaster.getCashFundId();
+            lsClientId = loMaster.getClientId();
+            lsPayeeName = loMaster.Payee().getCompanyName();
+            lsSourceNo = loMaster.getTransactionNo();
+            lsSourceCode = CashDisbursementStatus.SourceCode.CASHADVANCE;
+            lsDepartmentId = loMaster.getDepartmentRequest();
+        }
+        
+        //Populate Master
+        Master().setIndustryId(lsIndustyId);
+        Master().setCompanyId(lsCompanyId);
+        Master().setBranchCode(lsBranchCode);
+        Master().setCashFundId(lsFundId);
+        Master().setClientId(lsClientId);
+        Master().setPayeeName(lsPayeeName);
+        Master().setSourceNo(lsSourceNo);
+        Master().setSourceCode(lsSourceCode);
+        Master().setDepartmentRequest(lsDepartmentId);
+        Master().setVoucherNo(getVoucherNo());
+        
+        computeFields(false);
+        
+        return poJSON;
+    }
+    
+    
     /**
     * Populates the current transaction's master and detail records using data from a specific Cash Advance.
     * 
@@ -3773,6 +4155,59 @@ public class CashDisbursement extends Transaction {
         return poJSON;
     }
     
+    
+    public JSONObject checkValidAccountCode(String fsAccountCode, Double fdblDebitAmt, Double fdblCreditAmt){
+        poJSON = new JSONObject();
+        boolean isDebit = fdblDebitAmt > 0.0000;
+        if(fsAccountCode == null || "".equals(fsAccountCode)){
+            poJSON.put("result", "success");
+            poJSON.put("message", "success");
+            return poJSON;
+        }
+        try {
+        
+            if(poJournal != null){
+                if(poJournal.getEditMode() == EditMode.UPDATE){
+                    for(int lnCtr = 0; lnCtr < Journal().getDetailCount(); lnCtr++){
+                        if(fsAccountCode.equals(Journal().Detail(lnCtr).getAccountCode())){
+                            if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 && isDebit){
+                                    poJSON.put("result", "error");
+                                    poJSON.put("message", "Both debit and credit amounts cannot be greater than zero for the same account code within a transaction."
+                                            + "\nJournal Entry"
+                                            + "\nAccount: '" + Journal().Detail(lnCtr).Account_Chart().getDescription() + "', row " + (lnCtr + 1) + ".");
+                                    return poJSON;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            for(int lnCtr = 0;lnCtr < getJournalProposalList().size(); lnCtr++){
+                for(int lnRow = 0;lnRow < JournalProposal(lnCtr).getDetailCount();lnRow++){
+                    if(fsAccountCode.equals(JournalProposal(lnCtr).Detail(lnRow).getAccountCode())){
+                        if(JournalProposal(lnCtr).Detail(lnRow).getCreditAmount() > 0.0000 && isDebit){
+                                poJSON.put("result", "error");
+                                poJSON.put("message", "Both debit and credit amounts cannot be greater than zero for the same account code within a transaction."
+                                        + "\nJournal Proposal"
+                                        + "\nAccount: '" + Journal().Detail(lnCtr).Account_Chart().getDescription() + "', row " + (lnCtr + 1) + ".");
+                                return poJSON;
+                        }
+                    }
+                }
+            
+            }
+    
+        } catch (SQLException | GuanzonException ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+            poJSON.put("result", "error");
+            poJSON.put("message", MiscUtil.getException(ex));
+            return poJSON;
+        } 
+        poJSON.put("result", "success");
+        poJSON.put("message", "success");
+        return poJSON;
+    }
+    
     /**
      * Prepares and validates the transaction data before committing to the database.
      * 
@@ -4528,6 +4963,7 @@ public class CashDisbursement extends Transaction {
                 + " , e.sCompnyNm AS sPayeexxx "
                 + " , f.sCashFDsc AS sCashFund "
                 + ", g.sBranchNm AS sBranchNm "
+                + ", 'CASHFUND' AS sTranType "
                 + " FROM CashAdvance a         "
                 + " LEFT JOIN Company b ON b.sCompnyID = a.sCompnyID       "
                 + " LEFT JOIN Industry c ON c.sIndstCdx = a.sIndstCdx      "
@@ -4535,6 +4971,29 @@ public class CashDisbursement extends Transaction {
                 + " LEFT JOIN Client_Master e ON e.sClientID = a.sClientID "
                 + " LEFT JOIN CashFund f ON f.sCashFIDx = a.sCashFIDx      "
                 + " LEFT JOIN Branch g ON g.sBranchCd = a.sBranchCd ";
+    }
+    
+     public String prfSQL() {
+        return  " SELECT        "
+                + " a.sTransNox   "
+                + " , a.dTransact AS dTransact"
+                + " , a.sSeriesNo AS sCashFIDx "
+                + " , a.cTranStat "
+                + " , b.sCompnyNm AS sCompanyx "
+                + " , c.sDescript AS sIndustry "
+                + " , d.sDeptName AS sDeptName "
+                + " , e.sPayeeNme AS sPayeexxx "
+                + " , f.sPayeeNme AS sCashFund "
+                + " , g.sBranchNm AS sBranchNm "
+                + ", 'PRF' AS sTranType "
+                + " FROM Payment_Request_Master a         "
+                + " LEFT JOIN Company b ON b.sCompnyID = a.sCompnyID       "
+                + " LEFT JOIN Industry c ON c.sIndstCdx = a.sIndstCdx      "
+                + " LEFT JOIN Department d ON d.sDeptIDxx = a.sDeptIDxx    "
+                + " LEFT JOIN Payee e ON e.sPayeeIDx = a.sPayeeIDx "
+                + " LEFT JOIN Payee f ON f.sPayeeIDx = a.sPayeeIDx      "
+                + " LEFT JOIN Branch g ON g.sBranchCd = a.sBranchCd "
+                + " LEFT JOIN PO_Master h ON h.sTransNox = a.sSourceNo ";
     }
     
     /**

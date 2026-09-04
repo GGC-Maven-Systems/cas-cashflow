@@ -29,6 +29,7 @@ public class CashDisbursementStatus {
     
     public static class SourceCode  {
         public static final  String CASHADVANCE = "CADV"; 
+        public static final  String PAYMENTREQUEST = "PRFx"; 
     }
     
 }

@@ -4992,48 +4992,161 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                             try {
                                 GLTransaction loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
                                 System.out.println("----------JOURNAL PROPOSAL ACCOUNT MASTER / LEDGER----------");
+                                
+                                List<Model_Journal_Detail_Proposal> loList = new ArrayList<>();
+                                boolean lbMatch = false;
                                 if(getJournalProposalList() != null){
+                                    //Group Journal Proposal Based on the same Branch Code, Account Code and Detail Date
                                     for(int lnJEP = 0; lnJEP < getJournalProposalList().size(); lnJEP++){
                                         if(JournalProposal(lnJEP).getEditMode() == EditMode.UPDATE){
-                                            //GL Transaction Account Ledger
-                                            loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
-                                            loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
+                                            lbMatch = false;
                                             for(int lnCtr = 0; lnCtr <= JournalProposal(lnJEP).getDetailCount() - 1; lnCtr++){
-            //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
                                                 if(JournalProposal(lnJEP).Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
-                                                    loGLTrans.addDetail(JournalProposal(lnJEP).Master().getBranchCode(), 
-                                                            JournalProposal(lnJEP).Detail(lnCtr).getAccountCode(),
-                                                            SQLUtil.toDate(xsDateShort(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
-                                                            JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount(), 
-                                                            JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+                                                    for(Model_Journal_Detail_Proposal loModel : loList){
+                                                        if(loModel.getAccountCode().equals(JournalProposal(lnJEP).Detail(lnCtr).getAccountCode())){
+                                                            if(xsDateShort(loModel.getForMonthOf()).equals(xsDateShort(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf()))){
+                                                                Model_Journal_Master_Proposal loJEPMaster = new CashflowModels(poGRider).Journal_Master_Proposal();
+                                                                poJSON = loJEPMaster.openRecord(loModel.getTransactionNo());
+                                                                if ("error".equals((String) poJSON.get("result"))) {
+                                                                    return poJSON;
+                                                                }         
+                                                                if(loJEPMaster.getBranchCode().equals(JournalProposal(lnJEP).Master().getBranchCode())){
+                                                                    loModel.setCreditAmount(loModel.getCreditAmount() + JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+                                                                    loModel.setDebitAmount(loModel.getDebitAmount()+ JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount());
+                                                                    lbMatch = true;
+                                                                }
+
+                                                            }
+                                                        }
+                                                    }
+
+                                                    if(!lbMatch){
+                                                        loList.add(new CashflowModels(poGRider).Journal_Detail_Proposal());
+                                                        loList.get(loList.size()-1).setTransactionNo(JournalProposal(lnJEP).Detail(lnCtr).getTransactionNo());
+                                                        loList.get(loList.size()-1).setAccountCode(JournalProposal(lnJEP).Detail(lnCtr).getAccountCode());
+                                                        loList.get(loList.size()-1).setCreditAmount(JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+                                                        loList.get(loList.size()-1).setDebitAmount(JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount());
+                                                        loList.get(loList.size()-1).setForMonthOf(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf());
+                                                    }
                                                 }
                                             }
-                                            loGLTrans.saveTransaction();
+                                        }
+                                    }
+                                }
+                                
+                                
+                                System.out.println("-----------------------------------");
+                                
+                                System.out.println("----------JOURNAL ACCOUNT MASTER / LEDGER----------");
+                                
+                                loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
+                                loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
+                                
+                                if(poJournal != null){
+                                    if(poJournal.getEditMode() == EditMode.UPDATE){
+                                        for(int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++){
+                                            if(Journal().Detail(lnCtr).isReverse()){
+                                                lbMatch = false;
+                                                for(Model_Journal_Detail_Proposal loModel : loList){
+                                                    Model_Journal_Master_Proposal loJEPMaster = new CashflowModels(poGRider).Journal_Master_Proposal();
+                                                    poJSON = loJEPMaster.openRecord(loModel.getTransactionNo());
+                                                    if ("error".equals((String) poJSON.get("result"))) {
+                                                        return poJSON;
+                                                    } 
+
+                                                    if(loJEPMaster.getBranchCode().equals(Journal().Master().getBranchCode())){
+                                                        if(loModel.getAccountCode().equals(Journal().Detail(lnCtr).getAccountCode())){
+                                                            if(xsDateShort(loModel.getForMonthOf()).equals(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()))){
+                                                                lbMatch = true;
+                                                                loModel.setCreditAmount(loModel.getCreditAmount() + Journal().Detail(lnCtr).getCreditAmount());
+                                                                loModel.setDebitAmount(loModel.getDebitAmount()+ Journal().Detail(lnCtr).getDebitAmount());
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                if(!lbMatch){
+                                                    //GL Transaction Account Ledger
+                                                    loGLTrans.addDetail(Journal().Master().getBranchCode(), 
+                                                                Journal().Detail(lnCtr).getAccountCode(),
+                                                                SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
+                                                                Journal().Detail(lnCtr).getDebitAmount(), 
+                                                                Journal().Detail(lnCtr).getCreditAmount());
+                                                }
+                                            }
                                         }
                                     }
                                 }
                                 System.out.println("-----------------------------------");
                                 
-                                System.out.println("----------JOURNAL ACCOUNT MASTER / LEDGER----------");
-                                if(poJournal != null){
-                                    if(poJournal.getEditMode() == EditMode.UPDATE){
+                                    
+                                //Generate Account Ledger 
+                                for(Model_Journal_Detail_Proposal loModel : loList){
+                                    if(loModel.getTransactionNo() != null && !"".equals(loModel.getTransactionNo())){
+                                        Model_Journal_Master_Proposal loJEPMaster = new CashflowModels(poGRider).Journal_Master_Proposal();
+                                        poJSON = loJEPMaster.openRecord(loModel.getTransactionNo());
+                                        if ("error".equals((String) poJSON.get("result"))) {
+                                            return poJSON;
+                                        } 
+
                                         //GL Transaction Account Ledger
-                                        loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
-                                        loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
-                                        for(int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++){
-        //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
-                                            if(Journal().Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
-                                                loGLTrans.addDetail(Journal().Master().getBranchCode(), 
-                                                        Journal().Detail(lnCtr).getAccountCode(),
-                                                        SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
-                                                        Journal().Detail(lnCtr).getDebitAmount(), 
-                                                        Journal().Detail(lnCtr).getCreditAmount());
-                                            }
-                                        }
-                                        loGLTrans.saveTransaction();
+                                        loGLTrans.addDetail(loJEPMaster.getBranchCode(), 
+                                                        loModel.getAccountCode(),
+                                                        SQLUtil.toDate(xsDateShort(loModel.getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
+                                                        loModel.getDebitAmount(), 
+                                                        loModel.getCreditAmount());
                                     }
+
                                 }
-                                System.out.println("-----------------------------------");
+                                
+                                poJSON = loGLTrans.saveTransaction();
+                                if ("Failed".equals((String) poJSON.get("result"))) {
+                                    return poJSON;
+                                } 
+
+                                //Disabled by Arsiela replaced by script above
+//                                if(getJournalProposalList() != null){
+//                                    for(int lnJEP = 0; lnJEP < getJournalProposalList().size(); lnJEP++){
+//                                        if(JournalProposal(lnJEP).getEditMode() == EditMode.UPDATE){
+//                                            //GL Transaction Account Ledger
+//                                            loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
+//                                            loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
+//                                            for(int lnCtr = 0; lnCtr <= JournalProposal(lnJEP).getDetailCount() - 1; lnCtr++){
+//            //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
+//                                                if(JournalProposal(lnJEP).Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
+//                                                    loGLTrans.addDetail(JournalProposal(lnJEP).Master().getBranchCode(), 
+//                                                            JournalProposal(lnJEP).Detail(lnCtr).getAccountCode(),
+//                                                            SQLUtil.toDate(xsDateShort(JournalProposal(lnJEP).Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
+//                                                            JournalProposal(lnJEP).Detail(lnCtr).getDebitAmount(), 
+//                                                            JournalProposal(lnJEP).Detail(lnCtr).getCreditAmount());
+//                                                }
+//                                            }
+//                                            loGLTrans.saveTransaction();
+//                                        }
+//                                    }
+//                                }
+//                                System.out.println("-----------------------------------");
+                                
+//                                System.out.println("----------JOURNAL ACCOUNT MASTER / LEDGER----------");
+//                                if(poJournal != null){
+//                                    if(poJournal.getEditMode() == EditMode.UPDATE){
+//                                        //GL Transaction Account Ledger
+//                                        loGLTrans = new GLTransaction(poGRider,Master().getBranchCode());
+//                                        loGLTrans.initTransaction(getSourceCode(), Master().getTransactionNo());
+//                                        for(int lnCtr = 0; lnCtr <= Journal().getDetailCount() - 1; lnCtr++){
+//        //                                    if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 || Journal().Detail(lnCtr).getDebitAmount() > 0.0000){
+//                                            if(Journal().Detail(lnCtr).isReverse()){ //Added by Arsiela 05-16-2026 04:24PM
+//                                                loGLTrans.addDetail(Journal().Master().getBranchCode(), 
+//                                                        Journal().Detail(lnCtr).getAccountCode(),
+//                                                        SQLUtil.toDate(xsDateShort(Journal().Detail(lnCtr).getForMonthOf()), SQLUtil.FORMAT_SHORT_DATE) , 
+//                                                        Journal().Detail(lnCtr).getDebitAmount(), 
+//                                                        Journal().Detail(lnCtr).getCreditAmount());
+//                                            }
+//                                        }
+//                                        loGLTrans.saveTransaction();
+//                                    }
+//                                }
+//                                System.out.println("-----------------------------------");
                             } catch (GuanzonException | SQLException | NullPointerException ex) {
                                 Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
                                 poJSON.put("result", "error");
@@ -5200,6 +5313,58 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
         
         //Clear value 
         paOrigJEP = null;
+        poJSON.put("result", "success");
+        poJSON.put("message", "success");
+        return poJSON;
+    }
+    
+    public JSONObject checkValidAccountCode(String fsAccountCode, Double fdblDebitAmt, Double fdblCreditAmt){
+        poJSON = new JSONObject();
+        boolean isDebit = fdblDebitAmt > 0.0000;
+        if(fsAccountCode == null || "".equals(fsAccountCode)){
+            poJSON.put("result", "success");
+            poJSON.put("message", "success");
+            return poJSON;
+        }
+        try {
+        
+            if(poJournal != null){
+                if(poJournal.getEditMode() == EditMode.UPDATE){
+                    for(int lnCtr = 0; lnCtr < Journal().getDetailCount(); lnCtr++){
+                        if(fsAccountCode.equals(Journal().Detail(lnCtr).getAccountCode())){
+                            if(Journal().Detail(lnCtr).getCreditAmount() > 0.0000 && isDebit){
+                                    poJSON.put("result", "error");
+                                    poJSON.put("message", "Both debit and credit amounts cannot be greater than zero for the same account code within a transaction."
+                                            + "\nJournal Entry"
+                                            + "\nAccount: '" + Journal().Detail(lnCtr).Account_Chart().getDescription() + "', row " + (lnCtr + 1) + ".");
+                                    return poJSON;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            for(int lnCtr = 0;lnCtr < getJournalProposalList().size(); lnCtr++){
+                for(int lnRow = 0;lnRow < JournalProposal(lnCtr).getDetailCount();lnRow++){
+                    if(fsAccountCode.equals(JournalProposal(lnCtr).Detail(lnRow).getAccountCode())){
+                        if(JournalProposal(lnCtr).Detail(lnRow).getCreditAmount() > 0.0000 && isDebit){
+                                poJSON.put("result", "error");
+                                poJSON.put("message", "Both debit and credit amounts cannot be greater than zero for the same account code within a transaction."
+                                        + "\nJournal Proposal"
+                                        + "\nAccount: '" + Journal().Detail(lnCtr).Account_Chart().getDescription() + "', row " + (lnCtr + 1) + ".");
+                                return poJSON;
+                        }
+                    }
+                }
+            
+            }
+    
+        } catch (SQLException | GuanzonException ex) {
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, MiscUtil.getException(ex), ex);
+            poJSON.put("result", "error");
+            poJSON.put("message", MiscUtil.getException(ex));
+            return poJSON;
+        } 
         poJSON.put("result", "success");
         poJSON.put("message", "success");
         return poJSON;
@@ -7637,7 +7802,8 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 + " FROM Payment_Request_Master a "
                 + " LEFT JOIN Payee c ON a.sPayeeIDx = c.sPayeeIDx  "
                 + " LEFT JOIN Client_Master cc ON cc.sClientID = c.sAPClntID  "
-                + " LEFT JOIN Industry d ON d.sIndstCdx = a.sIndstCdx, "
+                + " LEFT JOIN Industry d ON d.sIndstCdx = a.sIndstCdx "
+                + " LEFT JOIN PO_Master e ON e.sTransNox = a.sSourceNo, " 
                 + " Branch b "
                 + " WHERE a.sBranchCd = b.sBranchCd "
                 + " AND a.cTranStat = " +  SQLUtil.toSQL(PaymentRequestStatus.CONFIRMED)
@@ -7647,7 +7813,8 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                 + lsIndustry
                 + " AND (a.cWithSOAx = '0' OR a.cWithSOAx = '' OR a.cWithSOAx IS NULL)" //Retrieve only transaction without SOA
                 + " AND a.sCompnyID = " +  SQLUtil.toSQL(psCompanyId)
-                + " AND b.sBranchNm LIKE " +  SQLUtil.toSQL("%"+psBranch+"%");
+                + " AND b.sBranchNm LIKE " +  SQLUtil.toSQL("%"+psBranch+"%")
+                + " AND (e.sTermCode IS NULL OR e.sTermCode = '' OR e.sTermCode != 'M0W2003')"; //Not equal to COD / Cash on delivery hardcoded according to sir mac and ma'am grace 09-03-2026
 //                + " AND c.sPayeeNme LIKE  " +  SQLUtil.toSQL("%"+psPayee+"%")
 //                + " GROUP BY a.sTransNox ";
         
