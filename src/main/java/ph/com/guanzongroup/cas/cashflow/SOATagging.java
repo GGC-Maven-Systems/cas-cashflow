@@ -2708,6 +2708,7 @@ public class SOATagging extends Transaction {
                 + " LEFT JOIN Payee b ON b.sPayeeIDx = a.sPayeeIDx "
                 + " LEFT JOIN Client_Master bb ON bb.sClientID = b.sClientID "
                 + " LEFT JOIN Company c ON c.sCompnyID = a.sCompnyID "
+                + " LEFT JOIN PO_Master e ON e.sTransNox = a.sSourceNo "
                 + " WHERE "
                 + " a.sIndstCdx = " + SQLUtil.toSQL(psIndustryId)
                 + " AND a.cTranStat = " + SQLUtil.toSQL(PaymentRequestStatus.CONFIRMED)
@@ -2717,7 +2718,8 @@ public class SOATagging extends Transaction {
 //                + " AND b.sPayeeNme LIKE " + SQLUtil.toSQL("%" + payee)
                 + " AND c.sCompnyNm LIKE " + SQLUtil.toSQL("%" + company)
                 + " AND a.sSeriesNo LIKE " + SQLUtil.toSQL("%" + referenceNo)
-                + " AND a.cProcessd = " + SQLUtil.toSQL(Logical.NO);
+                + " AND a.cProcessd = " + SQLUtil.toSQL(Logical.NO)
+                + " AND (e.sTermCode IS NULL OR e.sTermCode = '' OR e.sTermCode != 'M0W2003')"; //Not equal to COD / Cash on delivery hardcoded according to sir mac and ma'am grace 09-03-2026;
                 
                 if((supplier == null || "".equals(supplier)) || (payee == null || "".equals(payee))){
                     if(supplier != null && !"".equals(supplier)){

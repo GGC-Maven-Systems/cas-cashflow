@@ -447,7 +447,8 @@ public class CashLiquidation extends Transaction {
             if (poGRider.getUserLevel() <= UserRight.ENCODER) {
                 lsDepartment = checkApprover(psApprover);
             }
-            if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){
+//            if(!lsDepartment.equals(System.getProperty("sys.dept.finance"))){ //Disable by Arsiela replaced by script below according to new BR 08-22-2026
+            if(!lsDepartment.equals(poGRider.getDepartment())){ //Approver must be equal to the department of the current user
                 poJSON.put("result", "error" );
                 poJSON.put("message", "User or approving officer is not authorized to approve the transaction." );
                 return poJSON;
@@ -509,6 +510,14 @@ public class CashLiquidation extends Transaction {
             lsSQL = lsSQL +  " AND a.sDeptReqs = " + SQLUtil.toSQL(psDepartmentId);
         }
         
+        //Arsiela 08-22-2026
+        //BR: Entry by the Cash Advance requestor	makikita lang nya yung entry nya  /finance can view all the entry
+        if(!poGRider.getDepartment().equals(System.getProperty("sys.dept.finance"))){
+            if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+                lsSQL = lsSQL + " AND a.sClientID = " + SQLUtil.toSQL(poGRider.getEmployeeNo()); //Filter by user or requestor
+            }
+        }
+        
         lsSQL = lsSQL + " GROUP BY a.sTransNox ";
         System.out.println("Executing SQL: " + lsSQL);
         poJSON = ShowDialogFX.Browse(poGRider,
@@ -564,8 +573,22 @@ public class CashLiquidation extends Transaction {
         
         //Kung accounting yung dept ni user makikita lahat else kung hindi mag base sa department ng user - ma'am grace 03/26/2026 3:51pm
         if(!poGRider.getDepartment().equals( System.getProperty("sys.dept.finance"))){
-            lsSQL = lsSQL + " AND a.sBranchCd = " + SQLUtil.toSQL(poGRider.getBranchCode())
-                    +  " AND a.sDeptReqs = " + SQLUtil.toSQL(poGRider.getDepartment());
+            lsSQL = lsSQL + " AND a.sBranchCd = " + SQLUtil.toSQL(poGRider.getBranchCode());
+                    
+            //Filter by Department
+            System.out.println("DEPARTMENT : " + poGRider.getDepartment());
+            if(poGRider.getDepartment() != null && !"".equals(poGRider.getDepartment())){
+                lsSQL = lsSQL +  " AND a.sDeptReqs = " + SQLUtil.toSQL(poGRider.getDepartment());
+            }
+                   
+        }
+        
+        //Arsiela 08-22-2026
+        //BR: Entry by the Cash Advance requestor makikita lang nya yung entry nya  /finance can view all the entry
+        if(!poGRider.getDepartment().equals(System.getProperty("sys.dept.finance"))){
+            if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+                lsSQL = lsSQL + " AND a.sClientID = " + SQLUtil.toSQL(poGRider.getEmployeeNo()); //Filter by user or requestor
+            }
         }
         
         lsSQL = lsSQL + " GROUP BY a.sTransNox ";
@@ -830,8 +853,26 @@ public class CashLiquidation extends Transaction {
         
         if(fbisEntry){
             lsSQL = lsSQL +  " AND (a.sLiquidtd IS NULL OR TRIM(a.sLiquidtd) = '') " ;
+            
+            //Arsiela 08-22-2026
+            //BR: Entry by the Cash Advance requestor	makikita lang nya yung entry nya  /finance can view all the entry
+            lsSQL = lsSQL + " AND a.sClientID = " + SQLUtil.toSQL(poGRider.getEmployeeNo()); //Filter by user or requestor
+        
         } else {
             lsSQL = lsSQL +  " AND (a.sLiquidtd IS NOT NULL AND TRIM(a.sLiquidtd) <> '') " ;
+            
+            //Arsiela 08-22-2026
+            //BR: Entry by the Cash Advance requestor	makikita lang nya yung entry nya  /finance can view all the entry
+            if(!poGRider.getDepartment().equals(System.getProperty("sys.dept.finance"))){
+                if (poGRider.getUserLevel() <= UserRight.ENCODER) {
+                    lsSQL = lsSQL + " AND a.sClientID = " + SQLUtil.toSQL(poGRider.getEmployeeNo()); //Filter by user or requestor
+                }
+                //Filter by Department
+                System.out.println("DEPARTMENT : " + poGRider.getDepartment());
+                if(poGRider.getDepartment() != null && !"".equals(poGRider.getDepartment())){
+                    lsSQL = lsSQL +  " AND a.sDeptReqs = " + SQLUtil.toSQL(poGRider.getDepartment());
+                }
+            }
         }
             
         lsSQL = lsSQL + " GROUP BY a.sTransNox ORDER BY a.dTransact ASC ";
