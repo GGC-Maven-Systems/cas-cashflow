@@ -189,7 +189,7 @@ public class CheckStatusUpdate extends Transaction {
     public JSONObject SearchBanks(String value, boolean byCode) throws ExceptionInInitializerError, SQLException, GuanzonException {
         Banks object = new ParamControllers(poGRider, logwrapr).Banks();
         object.setRecordStatus("1");
-        if(pbWithUI)
+
         poJSON = object.searchRecord(value, byCode);
         if ("success".equals((String) poJSON.get("result"))) {
             CheckPayments().getModel().setBankID(object.getModel().getBankID());
@@ -202,7 +202,7 @@ public class CheckStatusUpdate extends Transaction {
         BankAccountMaster object = new CashflowControllers(poGRider, logwrapr).BankAccountMaster();
         object.setRecordStatus("1");
         if (BankID != null && !BankID.isEmpty()) {
-            poJSON = object.searchRecordbyBanks(value, BankID, byCode);
+            poJSON = object.searchRecordbyBankAccount(value, BankID, byCode);
             if ("success".equals((String) poJSON.get("result"))) {
                 CheckPayments().getModel().setBankAcountID(object.getModel().getBankAccountId());
             }
@@ -666,7 +666,9 @@ public class CheckStatusUpdate extends Transaction {
 //        return poJSON;
 //    }
 
-    public JSONObject cancelCheckPayment(String CheckRemarks) throws SQLException, GuanzonException, ParseException, CloneNotSupportedException {
+
+
+    public JSONObject cancelCheckPayment(String CheckRemarks,Boolean isReplacement) throws SQLException, GuanzonException, ParseException, CloneNotSupportedException {
         poJSON = new JSONObject();
         String lsStatus = CheckStatus.CANCELLED;
         CheckPayments checkTrans;
@@ -699,6 +701,11 @@ public class CheckStatusUpdate extends Transaction {
             return poJSON;
         }
         poJSON = checkTrans.getModel().setModifyingId(poGRider.getUserID());
+        if (!"success".equals((String) poJSON.get("result"))) {
+            poGRider.rollbackTrans();
+            return poJSON;
+        }
+        poJSON = checkTrans.getModel().isReplaced(!isReplacement);
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
             return poJSON;
@@ -839,6 +846,7 @@ public class CheckStatusUpdate extends Transaction {
                         .toString()
                         .replace(",", "")
         );
+
 
         double amount = bd.doubleValue();
         poJSON = checkTrans.getModel().setBranchCode((String) cachedCheckTrans.get("sBranchCd"));
@@ -1329,7 +1337,8 @@ public class CheckStatusUpdate extends Transaction {
     }
 
     public JSONObject updateBankAccounts() throws SQLException, GuanzonException {
-        if (CheckStatus.PrintStatus.PRINTED.equals(Master().CheckPayments().getPrint())) {
+        System.out.println("Master().CheckPayments().getPrint(): " + Master().CheckPayments().getPrint());
+        if (CheckStatus.PrintStatus.PRINTED.equals((String) cachedCheckTrans.get("cPrintxxx"))) {
             System.out.println("----------Bank Account Transaction----------");
             //Bank Account Transaction
             BankAccountTrans poBankAccountTrans = new BankAccountTrans(poGRider);
@@ -1342,7 +1351,7 @@ public class CheckStatusUpdate extends Transaction {
                     Master().CheckPayments().getSourceNo(),
                     SQLUtil.toDate(xsDateShort(Master().CheckPayments().getCheckDate()), SQLUtil.FORMAT_SHORT_DATE),
                     Master().CheckPayments().getAmount(),
-                    Master().CheckPayments().getCheckNo(),
+                    (String) cachedCheckTrans.get("sCheckNox"),
                     Master().getVoucherNo(),
                     true);
             if ("error".equals(poJSON.get("result"))) {
@@ -1356,7 +1365,7 @@ public class CheckStatusUpdate extends Transaction {
         return poJSON;
     }
 
-    public JSONObject ReplaceCheck(String CheckRemarks) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException, ScriptException {
+    public JSONObject ReplaceCheck(String CheckRemarks,boolean isReplacement) throws ParseException, SQLException, GuanzonException, CloneNotSupportedException, ScriptException {
         poJSON = new JSONObject();
 
         if (poGRider.getUserLevel() <= UserRight.ENCODER) {
@@ -1372,7 +1381,7 @@ public class CheckStatusUpdate extends Transaction {
         }
         poGRider.beginTrans("UPDATE STATUS", "Cancel Check", SOURCE_CODE, Master().CheckPayments().getTransactionNo());
 
-        poJSON = cancelCheckPayment(CheckRemarks);
+        poJSON = cancelCheckPayment(CheckRemarks, isReplacement);
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
             return poJSON;
@@ -1423,7 +1432,7 @@ public class CheckStatusUpdate extends Transaction {
         return poJSON;
     }
 
-    public JSONObject ReturnTransaction(String remarks, String CheckRemarks)
+    public JSONObject ReturnTransaction(String remarks, String CheckRemarks, Boolean isReplacement)
             throws ParseException, SQLException, GuanzonException, CloneNotSupportedException, ScriptException {
         poJSON = new JSONObject();
         String lsStatus = DisbursementStatic.RETURNED_I;
@@ -1480,11 +1489,13 @@ public class CheckStatusUpdate extends Transaction {
         }
         
 
-        poJSON = cancelCheckPayment(CheckRemarks);
+        poJSON = cancelCheckPayment(CheckRemarks,isReplacement);
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
             return poJSON;
         }
+
+
         poJSON = insertCheckPayment();
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
@@ -1502,6 +1513,7 @@ public class CheckStatusUpdate extends Transaction {
             poGRider.rollbackTrans();
             return poJSON;
         }
+
         poJSON = updateAPClients();
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
@@ -1631,7 +1643,7 @@ public class CheckStatusUpdate extends Transaction {
 
         poJSON = new JSONObject();
         poJSON.put("result", "success");
-        poJSON.put("message", "Check cleared successfully.");
+        poJSON.put("message", "Check Hold successfully.");
         return poJSON;
     }
 
