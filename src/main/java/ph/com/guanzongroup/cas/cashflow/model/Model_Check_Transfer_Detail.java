@@ -99,6 +99,14 @@ public class Model_Check_Transfer_Detail extends Model {
         return (String) getValue("sSourceNo");
     }
 
+    //sPayloadx
+    public JSONObject setPayload(String payload) {
+        return setValue("sPayloadx", payload);
+    }
+
+    public String getPayload() {
+        return (String) getValue("sPayloadx");
+    }
 
     //sRemarksx
     public JSONObject setRemarks(String originalid) {
