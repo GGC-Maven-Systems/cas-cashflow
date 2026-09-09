@@ -2685,6 +2685,19 @@ public class DisbursementVoucher extends Transaction {
 //            }
         }
         
+        Master().setAdvancesTotal(ldblTotalAdvancesAmount);
+        
+        //Requested by ma'am she do not recompute when dv status is approve, authorized and certified - Arsiela 09-09-2026 11:01AM
+        if(DisbursementStatic.VERIFIED.equals(Master().getTransactionStatus())
+            || DisbursementStatic.APPROVED.equals(Master().getTransactionStatus())
+            || DisbursementStatic.AUTHORIZED.equals(Master().getTransactionStatus())
+            || DisbursementStatic.CERTIFIED.equals(Master().getTransactionStatus())){
+            poJSON.put("column", "");
+            poJSON.put("result", "success");
+            poJSON.put("message", "Skipped setting of computation");
+            return poJSON;
+        }
+        
         if(ldblTransactionTotal < 0.0000) {
             poJSON.put("result", "error");
             poJSON.put("column", "nTranTotl");
@@ -2735,7 +2748,6 @@ public class DisbursementVoucher extends Transaction {
         Master().setVATExmpt(ldblVATExemptTotal);
         Master().setZeroVATSales(ldblZeroVATSales);
         Master().setNetTotal(lnNetAmountDue);
-        Master().setAdvancesTotal(ldblTotalAdvancesAmount);
 
         switch(Master().getDisbursementType()){
             case DisbursementStatic.DisbursementType.CHECK:
@@ -2912,6 +2924,18 @@ public class DisbursementVoucher extends Transaction {
         if ("error".equals((String) poJSON.get("result"))) {
             return poJSON;
         }
+        
+        //Requested by ma'am she do not recompute when dv status is approve, authorized and certified - Arsiela 09-09-2026 11:01AM
+        if(DisbursementStatic.VERIFIED.equals(Master().getTransactionStatus())
+            || DisbursementStatic.APPROVED.equals(Master().getTransactionStatus())
+            || DisbursementStatic.AUTHORIZED.equals(Master().getTransactionStatus())
+            || DisbursementStatic.CERTIFIED.equals(Master().getTransactionStatus())){
+            poJSON.put("column", "");
+            poJSON.put("result", "success");
+            poJSON.put("message", "Skipped setting of computation");
+            return poJSON;
+        }
+        
         Double ldblAdvances = Detail(fnRow).getDetailAdvances() - Detail(fnRow).getDetailSourceDiscount();
         Double ldblAmountApplied = Detail(fnRow).getAmountApplied();
         Double ldblAppliedAmtWithAdv = ldblAmountApplied + ldblAdvances;
@@ -5412,6 +5436,8 @@ private void createNewJournalProposal() throws CloneNotSupportedException, SQLEx
                                     return poJSON;
                                 } 
                                 if(lbContinue){
+                                    JournalProposal(lnCtr).Master().setIndustryCode(Master().getIndustryID());
+                                    JournalProposal(lnCtr).Master().setSourceCode(getSourceCode());
                                     JournalProposal(lnCtr).Master().setSourceNo(Master().getTransactionNo());
                                     JournalProposal(lnCtr).Master().setModifyingId(poGRider.getUserID());
                                     JournalProposal(lnCtr).Master().setModifiedDate(poGRider.getServerDate());
