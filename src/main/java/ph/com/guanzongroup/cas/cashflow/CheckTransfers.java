@@ -54,6 +54,7 @@ import org.guanzon.cas.parameter.Department;
 import org.guanzon.cas.parameter.services.ParamControllers;
 import org.guanzon.cas.purchasing.controller.PurchaseOrder;
 import org.guanzon.cas.purchasing.status.PurchaseOrderStatus;
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Check_Payments;
@@ -694,6 +695,27 @@ public class CheckTransfers extends Transaction {
             Detail(lnCtr).setEntryNo(lnCtr + 1);
             Detail(lnCtr).setSourceCode(Detail(lnCtr).CheckPayment().getSourceCode());
             Detail(lnCtr).setModifiedDate(poGRider.getServerDate());
+
+            /**
+             * Checks whether the current disbursement transaction is associated with a
+             * replenishment request. If a replenishment record is found, its transaction
+             * number is added to the detail payload under the {@code replenishment_request}
+             * key. If no replenishment record is found, the current detail is skipped.
+             *  @author TEEJEI DE CELIS
+             *  @since 2026-09-09
+             *  @approvedBy Grace De Guzman
+             */
+
+            JSONObject loJSON = isReplenishmentSource(Master().getTransactionNo());
+
+            if ("success".equals(loJSON.get("result"))) {
+                JSONObject loPayload = new JSONObject();
+                loPayload.put("replenishment_request", loJSON.get("RepTransNox"));
+                Detail(lnCtr).setPayload(loPayload.toJSONString());
+            } else {
+                continue;
+            }
+
         if (Detail(lnCtr).isReverse()) {
                 hasReverse = true; // at least one is reversed
             }
@@ -742,6 +764,71 @@ public class CheckTransfers extends Transaction {
             System.out.println("==================END TEST SAVE=====================");
 
         poJSON.put("result", "success");
+        return poJSON;
+    }
+
+    /**
+     * Checks whether the specified disbursement transaction is associated with
+     * one or more replenishment request transactions.
+     *
+     * <p>
+     * The method searches the {@code disbursement_detail} table for details
+     * matching the specified source transaction number and source code
+     * {@code PRFx}. If matching replenishment request transactions are found,
+     * their transaction numbers are returned in the {@code RepTransNox} JSON
+     * array.
+     * </p>
+     *
+     * <p>
+     * The returned JSON object contains:
+     * <ul>
+     *     <li>{@code result} - {@code success} if replenishment transactions
+     *         are found; otherwise {@code error}.</li>
+     *     <li>{@code RepTransNox} - A {@link JSONArray} containing the
+     *         replenishment request transaction number(s) when found.</li>
+     *     <li>{@code message} - An error message when no replenishment
+     *         transaction is found.</li>
+     * </ul>
+     * </p>
+     *
+     * @param sourceNo the transaction number of the disbursement to be checked
+     * @return a {@link JSONObject} containing the result and replenishment
+     *         transaction number(s), if available
+     * @throws SQLException if an error occurs while executing the SQL query
+     * @throws GuanzonException if a Guanzon framework-related error occurs
+     *
+     * @author TEEJEI DE CELIS
+     * @since 2026-09-09
+     * @approvedBy Grace De Guzman
+     */
+    private JSONObject isReplenishmentSource(String sourceNo) throws SQLException, GuanzonException {
+        JSONObject poJSON = new JSONObject();
+        JSONArray laReplenishment = new JSONArray();
+
+        String lsSQL = "SELECT b.sTransNox "
+                + "FROM disbursement_detail a "
+                + "LEFT JOIN replenishment_request b "
+                + "    ON a.sSourceNo = b.sTransNox "
+                + "WHERE a.sTransNox = " + SQLUtil.toSQL(sourceNo)
+                + "  AND a.sSourceCd = 'PRFx' "
+                + "  AND b.sTransNox IS NOT NULL";
+
+        ResultSet loRS = poGRider.executeQuery(lsSQL);
+
+        while (loRS.next()) {
+            laReplenishment.add(loRS.getString("sTransNox"));
+        }
+
+        MiscUtil.close(loRS);
+
+        if (laReplenishment.size() > 0) {
+            poJSON.put("result", "success");
+            poJSON.put("RepTransNox", laReplenishment);
+        } else {
+            poJSON.put("result", "error");
+            poJSON.put("message", "No replenishment transaction found.");
+        }
+
         return poJSON;
     }
 
