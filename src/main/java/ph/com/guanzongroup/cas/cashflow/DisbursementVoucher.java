@@ -10756,7 +10756,7 @@ public class DisbursementVoucher extends Transaction {
     private boolean isReplacementOnly(String fsSourceNo) throws SQLException {
         String lsSQL = " SELECT "
                 + "   cIsReplcd "
-                + " FROM check_payments ";
+                + " FROM Check_Payments ";
 
         lsSQL = MiscUtil.addCondition(
                 lsSQL,
