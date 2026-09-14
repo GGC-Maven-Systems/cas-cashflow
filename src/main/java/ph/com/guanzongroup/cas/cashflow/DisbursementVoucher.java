@@ -10785,7 +10785,7 @@ public class DisbursementVoucher extends Transaction {
     private String getReplaceCheckToUpdate(String fsSourceNo) throws SQLException {
         String lsSQL = " SELECT "
                 + "   sTransNox "
-                + " FROM check_payments ";
+                + " FROM Check_Payments ";
 
         lsSQL = MiscUtil.addCondition(
                 lsSQL,
