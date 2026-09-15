@@ -67,6 +67,7 @@ import ph.com.guanzongroup.cas.cashflow.status.DisbursementStatic;
 import ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStaticData;
 import static ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStaticData.recurring_expense_payment;
 import ph.com.guanzongroup.cas.cashflow.status.PaymentRequestStatus;
+import ph.com.guanzongroup.cas.cashflow.utility.CustomCommonUtil;
 import ph.com.guanzongroup.cas.cashflow.utility.CustomJasperViewerReports;
 import ph.com.guanzongroup.cas.cashflow.validator.PaymentRequestValidator;
 
@@ -1487,7 +1488,9 @@ public class PaymentRequest extends Transaction {
                     return poJSON;
                 }
                 double ldblBalance = loObject.getNetTotal().doubleValue() - loObject.getAmountPaid().doubleValue();
-                if(ldblBalance < Master().getTranTotal()){
+                ldblBalance = Double.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(ldblBalance, true).replace(",", "")); //Convert to 4 decimal places Arsiela 09-14-2026
+                double ldblTranTotal = Double.valueOf(CustomCommonUtil.setIntegerValueToDecimalFormat(Master().getTranTotal(), true).replace(",", "")); //Convert to 4 decimal places Arsiela 09-14-2026
+                if(ldblBalance < ldblTranTotal){
                     poJSON.put("result", "error");
                     poJSON.put("message", "PRF Net total cannot be greater than the purchase order balance.");
                     return poJSON;
