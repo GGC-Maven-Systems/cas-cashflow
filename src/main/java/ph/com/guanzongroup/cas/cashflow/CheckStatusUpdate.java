@@ -17,6 +17,7 @@ import org.guanzon.cas.parameter.Branch;
 import org.guanzon.cas.parameter.Industry;
 import org.guanzon.cas.parameter.services.ParamControllers;
 import org.json.simple.JSONObject;
+import org.rmj.cas.core.GLTransaction;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Disbursement_Detail;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Disbursement_Master;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Payment_Request_Master;
@@ -733,64 +734,263 @@ public class CheckStatusUpdate extends Transaction {
 
     public JSONObject updateJournalEntry() throws SQLException, GuanzonException, ParseException, CloneNotSupportedException {
         poJSON = new JSONObject();
+
         poJournal.setWithParent(true);
         poJournal.setWithUI(false);
+
         if (psApprover != null && !"".equals(psApprover)) {
             poJournal.setApproving(psApprover);
         }
-        poJournal.InitTransaction();
-        poJSON = poJournal.OpenTransaction(getJournalTrans());
-        if (!"success".equals((String) poJSON.get("result"))) {
+
+        /*
+         * Get all journal transactions related to the payment.
+         */
+        List<String> laJournalTrans = getJournalTrans();
+
+        if (laJournalTrans.isEmpty()) {
+            poJSON.put("result", "success");
+            poJSON.put("message", "No journal entry found.");
             return poJSON;
         }
-        poJSON = poJournal.ReturnTransaction("");
-        if (!"success".equals((String) poJSON.get("result"))) {
+
+        /*
+         * Get all journal details that need to be reversed
+         * before ReturnTransaction() clears/changes the journal details.
+         */
+        List<String> laAccountCode = new ArrayList<>();
+        List<Double> laDebitAmount = new ArrayList<>();
+        List<Double> laCreditAmount = new ArrayList<>();
+
+        for (int lnTrans = 0; lnTrans < laJournalTrans.size(); lnTrans++) {
+
+            poJournal.InitTransaction();
+
+            poJSON = poJournal.OpenTransaction(
+                    laJournalTrans.get(lnTrans));
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+
+            for (int lnCtr = 0; lnCtr < poJournal.getDetailCount(); lnCtr++) {
+
+                if (poJournal.Detail(lnCtr).isReverse()) {
+
+                    laAccountCode.add(
+                            poJournal.Detail(lnCtr).getAccountCode());
+
+                    laDebitAmount.add(
+                            poJournal.Detail(lnCtr).getDebitAmount());
+
+                    laCreditAmount.add(
+                            poJournal.Detail(lnCtr).getCreditAmount());
+                }
+            }
+
+            /*
+             * Return Journal
+             */
+            poJSON = poJournal.ReturnTransaction("");
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+        }
+
+        /*
+         * Generate GL Transaction Account Ledger
+         */
+        GLTransaction loGLTrans = new GLTransaction(
+                poGRider,
+                Master().getBranchCode());
+
+        loGLTrans.initTransaction(
+                getSourceCode(),
+                Master().getTransactionNo());
+
+        /*
+         * Use one server date for all reversal entries.
+         */
+        Date ldCancelDate = poGRider.getServerDate();
+
+        for (int lnCtr = 0; lnCtr < laAccountCode.size(); lnCtr++) {
+
+            loGLTrans.addDetail(
+                    Master().getBranchCode(),
+                    laAccountCode.get(lnCtr),
+                    ldCancelDate,
+                    laCreditAmount.get(lnCtr),
+                    laDebitAmount.get(lnCtr));
+        }
+
+        poJSON = loGLTrans.saveTransaction();
+
+        if ("Failed".equals((String) poJSON.get("result"))) {
             return poJSON;
         }
 
         poJSON.put("result", "success");
         poJSON.put("message", "success");
+
         return poJSON;
     }
-    
+
     public JSONObject updateJournalProposal() throws SQLException, GuanzonException, ParseException, CloneNotSupportedException {
         poJSON = new JSONObject();
+
         poJournalProposal.setWithParent(true);
         poJournalProposal.setWithUI(false);
+
         if (psApprover != null && !"".equals(psApprover)) {
             poJournalProposal.setApproving(psApprover);
         }
-        poJournalProposal.InitTransaction();
-        poJSON = poJournalProposal.OpenTransaction(getJournalTrans());
-        if (!"success".equals((String) poJSON.get("result"))) {
+
+        /*
+         * Get all journal proposal transactions related to the payment.
+         */
+        List<String> laJournalTrans = getJournalProposalTrans();
+
+        if (laJournalTrans.isEmpty()) {
+            poJSON.put("result", "success");
+            poJSON.put("message", "No journal proposal found.");
             return poJSON;
         }
-        poJSON = poJournalProposal.ReturnTransaction("");
-        if (!"success".equals((String) poJSON.get("result"))) {
+
+        /*
+         * Get the journal proposal details that need to be reversed
+         * before ReturnTransaction() clears/changes the details.
+         */
+        List<String> laAccountCode = new ArrayList<>();
+        List<Double> laDebitAmount = new ArrayList<>();
+        List<Double> laCreditAmount = new ArrayList<>();
+
+        for (int lnTrans = 0; lnTrans < laJournalTrans.size(); lnTrans++) {
+
+            poJournalProposal.InitTransaction();
+
+            poJSON = poJournalProposal.OpenTransaction(
+                    laJournalTrans.get(lnTrans));
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+
+            for (int lnCtr = 0; lnCtr < poJournalProposal.getDetailCount(); lnCtr++) {
+
+                if (poJournalProposal.Detail(lnCtr).isReverse()) {
+
+                    laAccountCode.add(
+                            poJournalProposal.Detail(lnCtr).getAccountCode());
+
+                    laDebitAmount.add(
+                            poJournalProposal.Detail(lnCtr).getDebitAmount());
+
+                    laCreditAmount.add(
+                            poJournalProposal.Detail(lnCtr).getCreditAmount());
+                }
+            }
+
+            /*
+             * Return Journal Proposal
+             */
+            poJSON = poJournalProposal.ReturnTransaction("");
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+        }
+
+        /*
+         * Generate GL Transaction Account Ledger
+         */
+        GLTransaction loGLTrans = new GLTransaction(
+                poGRider,
+                Master().getBranchCode());
+
+        loGLTrans.initTransaction(
+                getSourceCode(),
+                Master().getTransactionNo());
+
+        /*
+         * Use one cancellation date for all reversal entries.
+         */
+        Date ldCancelDate = poGRider.getServerDate();
+
+        for (int lnCtr = 0; lnCtr < laAccountCode.size(); lnCtr++) {
+            loGLTrans.addDetail(
+                    Master().getBranchCode(),
+                    laAccountCode.get(lnCtr),
+                    ldCancelDate,
+                    laCreditAmount.get(lnCtr),
+                    laDebitAmount.get(lnCtr));
+        }
+
+        poJSON = loGLTrans.saveTransaction();
+
+        if ("Failed".equals((String) poJSON.get("result"))) {
             return poJSON;
         }
 
         poJSON.put("result", "success");
         poJSON.put("message", "success");
+
         return poJSON;
     }
 
-    public String getJournalTrans() throws SQLException, GuanzonException {
+    public List<String> getJournalTrans() throws SQLException, GuanzonException {
+        List<String> laJournalTrans = new ArrayList<>();
+
         String lsSQL = "SELECT sTransNox FROM Journal_Master";
+
         lsSQL = MiscUtil.addCondition(
                 lsSQL,
-                "sSourceNo = " + SQLUtil.toSQL(Master().CheckPayments().getSourceNo())
-                + " ORDER BY sTransNox DESC LIMIT 1");
+                "sSourceNo = " + SQLUtil.toSQL(
+                        Master().CheckPayments().getSourceNo())
+                        + " ORDER BY sTransNox DESC");
 
         System.out.println("EXECUTING SQL : " + lsSQL);
+
         ResultSet loRS = null;
+
         try {
             loRS = poGRider.executeQuery(lsSQL);
 
-            if (loRS != null && loRS.next()) {
-                return loRS.getString("sTransNox");
+            while (loRS != null && loRS.next()) {
+                laJournalTrans.add(
+                        loRS.getString("sTransNox"));
             }
-            return "";
+
+            return laJournalTrans;
+
+        } finally {
+            MiscUtil.close(loRS);
+        }
+    }
+    public List<String> getJournalProposalTrans() throws SQLException, GuanzonException {
+        List<String> laJournalTrans = new ArrayList<>();
+
+        String lsSQL = "SELECT sTransNox FROM Journal_Master_Proposal";
+
+        lsSQL = MiscUtil.addCondition(
+                lsSQL,
+                "sSourceNo = " + SQLUtil.toSQL(
+                        Master().CheckPayments().getSourceNo())
+                        + " ORDER BY sTransNox DESC");
+
+        System.out.println("EXECUTING SQL : " + lsSQL);
+
+        ResultSet loRS = null;
+
+        try {
+            loRS = poGRider.executeQuery(lsSQL);
+
+            while (loRS != null && loRS.next()) {
+                laJournalTrans.add(
+                        loRS.getString("sTransNox"));
+            }
+
+            return laJournalTrans;
+
         } finally {
             MiscUtil.close(loRS);
         }
@@ -1336,6 +1536,30 @@ public class CheckStatusUpdate extends Transaction {
 
     }
 
+    public JSONObject updateAccountLedger() throws SQLException, GuanzonException {
+        System.out.println("----------AP CLIENT MASTER----------");
+        APTransaction loAPTrans = new APTransaction(poGRider, Master().getBranchCode());
+
+        String lsClientId = Master().CheckPayments().Payee().getAPClientID();
+        if (lsClientId == null || "".equals(lsClientId)) {
+            lsClientId = Master().CheckPayments().Payee().getAPClientID();
+        }
+        poJSON = loAPTrans.PaymentIssue(lsClientId,
+                "",
+                Master().getTransactionNo(),
+                Master().getTransactionDate(),
+                Master().getNetTotal(),
+                true);
+        if ("error".equals(poJSON.get("result"))) {
+            return poJSON;
+        }
+        System.out.println("-----------------------------------");
+
+        poJSON.put("result", "success");
+        poJSON.put("message", "success");
+        return poJSON;
+
+    }
     public JSONObject updateBankAccounts() throws SQLException, GuanzonException {
         System.out.println("Master().CheckPayments().getPrint(): " + Master().CheckPayments().getPrint());
         if (CheckStatus.PrintStatus.PRINTED.equals((String) cachedCheckTrans.get("cPrintxxx"))) {
@@ -1472,21 +1696,30 @@ public class CheckStatusUpdate extends Transaction {
             return poJSON;
         }
         
-        if (hasJournalTrans()) {
-            poJSON = updateJournalEntry();
+//        if (hasJournalTrans()) {
+//            poJSON = updateJournalEntry();
+//            if (!"success".equals((String) poJSON.get("result"))) {
+//                poGRider.rollbackTrans();
+//                return poJSON;
+//            }
+//        }
+//
+//        if (hasJournalProposal()) {
+//            poJSON = updateJournalProposal();
+//            if (!"success".equals((String) poJSON.get("result"))) {
+//                poGRider.rollbackTrans();
+//                return poJSON;
+//            }
+//        }
+        if(hasJournalTrans()||hasJournalProposal()){
+            poJSON = updateJournal();
             if (!"success".equals((String) poJSON.get("result"))) {
                 poGRider.rollbackTrans();
                 return poJSON;
             }
         }
-        
-        if (hasJournalProposal()) {
-            poJSON = updateJournalProposal();
-            if (!"success".equals((String) poJSON.get("result"))) {
-                poGRider.rollbackTrans();
-                return poJSON;
-            }
-        }
+
+
         
 
         poJSON = cancelCheckPayment(CheckRemarks,isReplacement);
@@ -1515,6 +1748,12 @@ public class CheckStatusUpdate extends Transaction {
         }
 
         poJSON = updateAPClients();
+        if (!"success".equals((String) poJSON.get("result"))) {
+            poGRider.rollbackTrans();
+            return poJSON;
+        }
+
+        poJSON = updateAccountLedger();
         if (!"success".equals((String) poJSON.get("result"))) {
             poGRider.rollbackTrans();
             return poJSON;
@@ -1717,6 +1956,287 @@ public class CheckStatusUpdate extends Transaction {
         } finally {
             MiscUtil.close(loRS);
         }
+    }
+    public JSONObject updateJournal() throws SQLException, GuanzonException, ParseException, CloneNotSupportedException {
+        poJSON = new JSONObject();
+
+        poJournal.setWithParent(true);
+        poJournal.setWithUI(false);
+
+        poJournalProposal.setWithParent(true);
+        poJournalProposal.setWithUI(false);
+
+        if (psApprover != null && !"".equals(psApprover)) {
+            poJournal.setApproving(psApprover);
+            poJournalProposal.setApproving(psApprover);
+        }
+
+        /*
+         * Get all journal transactions related to the payment.
+         */
+        List<String> laJournalTrans = getJournalTrans();
+
+        /*
+         * Get all journal proposal transactions related to the payment.
+         */
+        List<String> laJournalProposalTrans = getJournalProposalTrans();
+
+        /*
+         * No Journal Entry and no Journal Proposal found.
+         */
+        if (laJournalTrans.isEmpty() && laJournalProposalTrans.isEmpty()) {
+            poJSON.put("result", "success");
+            poJSON.put("message", "No journal entry or journal proposal found.");
+            return poJSON;
+        }
+
+        /*
+         * Get all journal details that need to be reversed
+         * before ReturnTransaction() clears/changes the journal details.
+         */
+        List<String> laBranchCode = new ArrayList<>();
+        List<String> laAccountCode = new ArrayList<>();
+        List<Date> laForMonthOf = new ArrayList<>();
+        List<Double> laDebitAmount = new ArrayList<>();
+        List<Double> laCreditAmount = new ArrayList<>();
+
+        /*
+         * ============================================================
+         * Get Journal Proposal details.
+         * ============================================================
+         */
+        for (int lnTrans = 0; lnTrans < laJournalProposalTrans.size(); lnTrans++) {
+
+            poJournalProposal.InitTransaction();
+
+            poJSON = poJournalProposal.OpenTransaction(
+                    laJournalProposalTrans.get(lnTrans));
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+
+            for (int lnCtr = 0;
+                 lnCtr < poJournalProposal.getDetailCount();
+                 lnCtr++) {
+
+                if (poJournalProposal.Detail(lnCtr).isReverse()) {
+
+                    String lsBranchCode =
+                            poJournalProposal.Master().getBranchCode();
+
+                    String lsAccountCode =
+                            poJournalProposal.Detail(lnCtr).getAccountCode();
+
+                    Date ldForMonthOf =
+                            SQLUtil.toDate(
+                                    xsDateShort(
+                                            poJournalProposal.Detail(lnCtr).getForMonthOf()),
+                                    SQLUtil.FORMAT_SHORT_DATE);
+
+                    boolean lbMatch = false;
+
+                    /*
+                     * Check if the same Branch Code,
+                     * Account Code and For Month Of already exist.
+                     */
+                    for (int lnRow = 0;
+                         lnRow < laAccountCode.size();
+                         lnRow++) {
+
+                        if (lsBranchCode.equals(laBranchCode.get(lnRow))
+                                && lsAccountCode.equals(laAccountCode.get(lnRow))
+                                && xsDateShort(ldForMonthOf).equals(
+                                xsDateShort(laForMonthOf.get(lnRow)))) {
+
+                            laDebitAmount.set(
+                                    lnRow,
+                                    laDebitAmount.get(lnRow)
+                                            + poJournalProposal.Detail(lnCtr).getDebitAmount());
+
+                            laCreditAmount.set(
+                                    lnRow,
+                                    laCreditAmount.get(lnRow)
+                                            + poJournalProposal.Detail(lnCtr).getCreditAmount());
+
+                            lbMatch = true;
+                            break;
+                        }
+                    }
+
+                    /*
+                     * No matching detail found.
+                     * Add Journal Proposal detail as a new grouped detail.
+                     */
+                    if (!lbMatch) {
+                        laBranchCode.add(lsBranchCode);
+                        laAccountCode.add(lsAccountCode);
+                        laForMonthOf.add(ldForMonthOf);
+
+                        laDebitAmount.add(
+                                poJournalProposal.Detail(lnCtr).getDebitAmount());
+
+                        laCreditAmount.add(
+                                poJournalProposal.Detail(lnCtr).getCreditAmount());
+                    }
+                }
+            }
+
+            /*
+             * Return Journal Proposal.
+             */
+            poJSON = poJournalProposal.ReturnTransaction("");
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+        }
+
+        /*
+         * ============================================================
+         * Get Journal Entry details.
+         * ============================================================
+         */
+        for (int lnTrans = 0; lnTrans < laJournalTrans.size(); lnTrans++) {
+
+            poJournal.InitTransaction();
+
+            poJSON = poJournal.OpenTransaction(
+                    laJournalTrans.get(lnTrans));
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+
+            for (int lnCtr = 0;
+                 lnCtr < poJournal.getDetailCount();
+                 lnCtr++) {
+
+                if (poJournal.Detail(lnCtr).isReverse()) {
+
+                    String lsBranchCode =
+                            poJournal.Master().getBranchCode();
+
+                    String lsAccountCode =
+                            poJournal.Detail(lnCtr).getAccountCode();
+
+                    Date ldForMonthOf =
+                            SQLUtil.toDate(
+                                    xsDateShort(
+                                            poJournal.Detail(lnCtr).getForMonthOf()),
+                                    SQLUtil.FORMAT_SHORT_DATE);
+
+                    boolean lbMatch = false;
+
+                    /*
+                     * Check if the same Branch Code,
+                     * Account Code and For Month Of already exist.
+                     *
+                     * This can match:
+                     * - Journal Proposal details
+                     * - Previously processed Journal details
+                     */
+                    for (int lnRow = 0;
+                         lnRow < laAccountCode.size();
+                         lnRow++) {
+
+                        if (lsBranchCode.equals(laBranchCode.get(lnRow))
+                                && lsAccountCode.equals(laAccountCode.get(lnRow))
+                                && xsDateShort(ldForMonthOf).equals(
+                                xsDateShort(laForMonthOf.get(lnRow)))) {
+
+                            laDebitAmount.set(
+                                    lnRow,
+                                    laDebitAmount.get(lnRow)
+                                            + poJournal.Detail(lnCtr).getDebitAmount());
+
+                            laCreditAmount.set(
+                                    lnRow,
+                                    laCreditAmount.get(lnRow)
+                                            + poJournal.Detail(lnCtr).getCreditAmount());
+
+                            lbMatch = true;
+                            break;
+                        }
+                    }
+
+                    /*
+                     * No matching detail found.
+                     * Add Journal Entry detail as a new grouped detail.
+                     */
+                    if (!lbMatch) {
+                        laBranchCode.add(lsBranchCode);
+                        laAccountCode.add(lsAccountCode);
+                        laForMonthOf.add(ldForMonthOf);
+
+                        laDebitAmount.add(
+                                poJournal.Detail(lnCtr).getDebitAmount());
+
+                        laCreditAmount.add(
+                                poJournal.Detail(lnCtr).getCreditAmount());
+                    }
+                }
+            }
+
+            /*
+             * Return Journal.
+             */
+            poJSON = poJournal.ReturnTransaction("");
+
+            if (!"success".equals((String) poJSON.get("result"))) {
+                return poJSON;
+            }
+        }
+
+        /*
+         * ============================================================
+         * Generate ONE GL Transaction Account Ledger.
+         * ============================================================
+         */
+        GLTransaction loGLTrans = new GLTransaction(
+                poGRider,
+                Master().getBranchCode());
+
+        loGLTrans.initTransaction(
+                getSourceCode(),
+                Master().getTransactionNo());
+
+        /*
+         * Use one cancellation date for all reversal entries.
+         */
+        Date ldCancelDate = poGRider.getServerDate();
+
+        /*
+         * Reverse the original Debit/Credit.
+         *
+         * Original Debit  -> Cancellation Credit
+         * Original Credit -> Cancellation Debit
+         */
+        for (int lnCtr = 0;
+             lnCtr < laAccountCode.size();
+             lnCtr++) {
+
+            loGLTrans.addDetail(
+                    laBranchCode.get(lnCtr),
+                    laAccountCode.get(lnCtr),
+                    ldCancelDate,
+                    laCreditAmount.get(lnCtr),
+                    laDebitAmount.get(lnCtr));
+        }
+
+        /*
+         * Save ONE GL Transaction.
+         */
+        poJSON = loGLTrans.saveTransaction();
+
+        if ("Failed".equals((String) poJSON.get("result"))) {
+            return poJSON;
+        }
+
+        poJSON.put("result", "success");
+        poJSON.put("message", "success");
+
+        return poJSON;
     }
 
 }
