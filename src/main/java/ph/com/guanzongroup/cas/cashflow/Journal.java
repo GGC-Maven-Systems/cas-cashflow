@@ -24,7 +24,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Journal_Detail;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Journal_Master;
-import ph.com.guanzongroup.cas.cashflow.services.CashflowControllers;
+import org.guanzon.cas.parameter.AccountChart;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.JournalStatus;
 
@@ -360,7 +360,7 @@ public class Journal extends Transaction {
 
     /*Seach Detail References*/
     public JSONObject SearchAccountCode(int row, String value, boolean byCode, String industryCode, String glCode) throws ExceptionInInitializerError, SQLException, GuanzonException {
-        AccountChart object = new CashflowControllers(poGRider, logwrapr).AccountChart();
+        AccountChart object = new ParamControllers(poGRider, logwrapr).AccountChart();
         object.setRecordStatus("1");
 
         poJSON = object.searchRecord(value, byCode, industryCode, glCode);

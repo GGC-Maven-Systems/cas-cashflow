@@ -9,11 +9,11 @@ import org.guanzon.appdriver.base.SQLUtil;
 import org.guanzon.appdriver.constant.Logical;
 import org.guanzon.appdriver.constant.RecordStatus;
 import org.guanzon.appdriver.constant.UserRight;
+import org.guanzon.cas.parameter.AccountChart;
 import org.guanzon.cas.parameter.TaxCode;
 import org.guanzon.cas.parameter.services.ParamControllers;
 import org.json.simple.JSONObject;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Withholding_Tax;
-import ph.com.guanzongroup.cas.cashflow.services.CashflowControllers;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 
 public class WithholdingTax extends Parameter {
@@ -117,7 +117,7 @@ public class WithholdingTax extends Parameter {
             throws SQLException,
             GuanzonException {
         poJSON = new JSONObject();
-        AccountChart loObject = new CashflowControllers(poGRider, logwrapr).AccountChart();
+        AccountChart loObject = new ParamControllers(poGRider, logwrapr).AccountChart();
         loObject.setRecordStatus(RecordStatus.ACTIVE);
         poJSON = loObject.searchRecordByIndustry(value, byCode);
         if ("success".equals((String) poJSON.get("result"))) {

@@ -5,7 +5,6 @@ import org.guanzon.appdriver.base.GRiderCAS;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.LogWrapper;
 import ph.com.guanzongroup.cas.cashflow.APPaymentAdjustment;
-import ph.com.guanzongroup.cas.cashflow.AccountChart;
 import ph.com.guanzongroup.cas.cashflow.BIR2307Filler;
 import ph.com.guanzongroup.cas.cashflow.Particular;
 import ph.com.guanzongroup.cas.cashflow.BankAccountMaster;
@@ -40,7 +39,6 @@ import ph.com.guanzongroup.cas.cashflow.RecurringIssuance;
 import ph.com.guanzongroup.cas.cashflow.ReplenishmentRequest;
 import ph.com.guanzongroup.cas.cashflow.SOATagging;
 import ph.com.guanzongroup.cas.cashflow.SubClass.Disbursement_PRF;
-import ph.com.guanzongroup.cas.cashflow.TransactionAccountChart;
 import ph.com.guanzongroup.cas.cashflow.WithholdingTax;
 import ph.com.guanzongroup.cas.cashflow.WithholdingTaxDeductions;
 
@@ -312,43 +310,6 @@ public class CashflowControllers {
         poAPPaymentAdjustment.setLogWrapper(poLogWrapper);
         poAPPaymentAdjustment.initialize();
         return poAPPaymentAdjustment;
-    }
-
-    public AccountChart AccountChart() throws SQLException, GuanzonException {
-        if (poGRider == null) {
-            poLogWrapper.severe("CashflowControllers.AccountChart: Application driver is not set.");
-            return null;
-        }
-
-        if (poAccountChart != null) {
-            return poAccountChart;
-        }
-
-        poAccountChart = new AccountChart();
-        poAccountChart.setApplicationDriver(poGRider);
-        poAccountChart.setWithParentClass(false);
-        poAccountChart.setLogWrapper(poLogWrapper);
-        poAccountChart.initialize();
-        return poAccountChart;
-    }
-
-    public TransactionAccountChart TransactionAccountChart() throws SQLException, GuanzonException {
-        if (poGRider == null) {
-            poLogWrapper.severe("CashflowControllers.TransactionAccountChart: Application driver is not set.");
-            return null;
-        }
-
-        if (poTransactionAccountChart != null) {
-            return poTransactionAccountChart;
-        }
-
-        poTransactionAccountChart = new TransactionAccountChart();
-        poTransactionAccountChart.setApplicationDriver(poGRider);
-        poTransactionAccountChart.setWithParentClass(false);
-        poTransactionAccountChart.setLogWrapper(poLogWrapper);
-        poTransactionAccountChart.initialize();
-        poTransactionAccountChart.newRecord();
-        return poTransactionAccountChart;
     }
 
     public Journal Journal() throws SQLException, GuanzonException {
@@ -802,8 +763,6 @@ public class CashflowControllers {
             poCheckPaymentImports = null;
             poPaymentRequest = null;
             poCheckPrintingRequest = null;
-            poAccountChart = null;
-            poTransactionAccountChart = null;
             poDocummentMapping = null;
             poCheckStatusUpdate = null;
             poCheckImporting = null;
@@ -844,8 +803,6 @@ public class CashflowControllers {
     private SOATagging poSOATagging;
     private APPaymentAdjustment poAPPaymentAdjustment;
     private CheckPrintingRequest poCheckPrintingRequest;
-    private AccountChart poAccountChart;
-    private TransactionAccountChart poTransactionAccountChart;
     private Journal poJournal;
     private JournalProposal poJournalProposal;
     private DocumentMapping poDocummentMapping;

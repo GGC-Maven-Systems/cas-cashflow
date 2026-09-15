@@ -52,7 +52,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Cash_Advance;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Cash_Advance_Detail;
-import ph.com.guanzongroup.cas.cashflow.services.CashflowControllers;
+import org.guanzon.cas.parameter.AccountChart;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.CashAdvanceStatus;
 import ph.com.guanzongroup.cas.cashflow.status.DisbursementStatic;
@@ -710,7 +710,7 @@ public class CashLiquidation extends Transaction {
      * @throws ExceptionInInitializerError, SQLException, GuanzonException If search fails.
      */
     public JSONObject SearchAccount(String value, boolean byCode, int row) throws ExceptionInInitializerError, SQLException, GuanzonException {
-        AccountChart object = new CashflowControllers(poGRider, logwrapr).AccountChart();
+        AccountChart object = new ParamControllers(poGRider, logwrapr).AccountChart();
         object.setRecordStatus(RecordStatus.ACTIVE);
         poJSON = object.searchRecord(value, byCode,Master().getIndustryId(),null);
         poJSON.put("row", row);

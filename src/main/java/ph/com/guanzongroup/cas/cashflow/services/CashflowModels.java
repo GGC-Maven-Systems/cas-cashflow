@@ -4,8 +4,6 @@ import org.guanzon.appdriver.base.GRiderCAS;
 import ph.com.guanzongroup.cas.cashflow.model.Model_AP_Payment_Adjustment;
 import ph.com.guanzongroup.cas.cashflow.model.Model_AP_Payment_Detail;
 import ph.com.guanzongroup.cas.cashflow.model.Model_AP_Payment_Master;
-import ph.com.guanzongroup.cas.cashflow.model.Model_Account_Chart;
-import ph.com.guanzongroup.cas.cashflow.model.Model_Account_ChartX;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Bank_Account_Ledger;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Bank_Account_Master;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Cache_Payable_Detail;
@@ -47,7 +45,6 @@ import ph.com.guanzongroup.cas.cashflow.model.Model_Recurring_Expense_Payment_Mo
 import ph.com.guanzongroup.cas.cashflow.model.Model_Recurring_Expense_Schedule;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Recurring_Issuance;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Replenishment_Request;
-import ph.com.guanzongroup.cas.cashflow.model.Model_Transaction_Account_Chart;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Withholding_Tax;
 import ph.com.guanzongroup.cas.cashflow.model.Model_Withholding_Tax_Deductions;
 
@@ -139,57 +136,6 @@ public class CashflowModels {
         }
 
         return poRecurringIssuance;
-    }
-    
-    public Model_Account_Chart Account_Chart(){
-        if (poGRider == null){
-            System.err.println("CashflowModels.Account_Chart: Application driver is not set.");
-            return null;
-        }
-        
-        if (poAccountChart == null){
-            poAccountChart = new Model_Account_Chart();
-            poAccountChart.setApplicationDriver(poGRider);
-            poAccountChart.setXML("Model_Account_Chart");
-            poAccountChart.setTableName("Account_Chart");
-            poAccountChart.initialize();
-        }
-
-        return poAccountChart;
-    }
-    
-     public Model_Account_ChartX Account_ChartX(){
-        if (poGRider == null){
-            System.err.println("CashflowModels.Account_ChartX: Application driver is not set.");
-            return null;
-        }
-        
-        if (poAccountChartX == null){
-            poAccountChartX = new Model_Account_ChartX();
-            poAccountChartX.setApplicationDriver(poGRider);
-            poAccountChartX.setXML("Model_Account_Chart");
-            poAccountChartX.setTableName("Account_Chart");
-            poAccountChartX.initialize();
-        }
-
-        return poAccountChartX;
-    }
-    
-    public Model_Transaction_Account_Chart Transaction_Account_Chart(){
-        if (poGRider == null){
-            System.err.println("CashflowModels.Account_Chart: Application driver is not set.");
-            return null;
-        }
-        
-        if (poGeneralLedger == null){
-            poGeneralLedger = new Model_Transaction_Account_Chart();
-            poGeneralLedger.setApplicationDriver(poGRider);
-            poGeneralLedger.setXML("Model_Transaction_Account_Chart");
-            poGeneralLedger.setTableName("Transaction_Account_Chart");
-            poGeneralLedger.initialize();
-        }
-
-        return poGeneralLedger;
     }
     
     public Model_Journal_Master Journal_Master(){
@@ -898,9 +844,6 @@ public class CashflowModels {
             poCachePayableDetail = null;
             poCachePayableMaster = null;
             poRecurringIssuance = null;
-            poAccountChart = null;
-            poAccountChartX = null;
-            poGeneralLedger = null;
             poJournalMaster = null;
             poJournalDetail = null;
             poCheckPrintingMaster = null;
@@ -941,13 +884,10 @@ public class CashflowModels {
     
     private GRiderCAS poGRider;
 
-    private Model_Account_Chart poAccountChart;
-    private Model_Account_ChartX poAccountChartX;
     private Model_Bank_Account_Master poBankAccountMaster;
     private Model_Bank_Account_Ledger poBankAccountLedger;
     private Model_Cache_Payable_Detail poCachePayableDetail;
     private Model_Cache_Payable_Master poCachePayableMaster;
-    private Model_Transaction_Account_Chart poGeneralLedger;
     private Model_Journal_Master poJournalMaster;
     private Model_Journal_Detail poJournalDetail;
     private Model_Journal_Master_Proposal poJournalMasterProposal;
