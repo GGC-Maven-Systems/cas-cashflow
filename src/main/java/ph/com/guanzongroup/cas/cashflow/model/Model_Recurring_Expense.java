@@ -3,6 +3,7 @@ package ph.com.guanzongroup.cas.cashflow.model;
 import java.sql.SQLException;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.constant.EditMode;
@@ -42,12 +43,6 @@ public class Model_Recurring_Expense extends Model {
             ID = poEntity.getMetaData().getColumnLabel(1);
 //            ID2 = poEntity.getMetaData().getColumnLabel(3);
 //            ID3 = poEntity.getMetaData().getColumnLabel(4);
-            ParamModels model = new ParamModels(poGRider);
-            poIndustry = model.Industry();
-
-            CashflowModels gl = new CashflowModels(poGRider);
-            poParticular = gl.Particular();
-            poPayee = gl.Payee();
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -143,14 +138,22 @@ public class Model_Recurring_Expense extends Model {
     }
     
     public Model_Industry Industry() throws SQLException, GuanzonException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals((String) getValue("sIndstCdx"))) {
             if (poIndustry.getEditMode() == EditMode.READY
                     && poIndustry.getIndustryId().equals((String) getValue("sIndstCdx"))) {
                 return poIndustry;
             } else {
+                if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                    return poIndustry;
+                }
+
                 poJSON = poIndustry.openRecord((String) getValue("sIndstCdx"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                     return poIndustry;
                 } else {
                     poIndustry.initialize();
@@ -164,6 +167,9 @@ public class Model_Recurring_Expense extends Model {
     }
 
     public Model_Payee Payee() throws SQLException, GuanzonException {
+        if (poPayee == null) {
+            poPayee = new CashflowModels(poGRider).Payee();
+        }
         if (!"".equals((String) getValue("sPayeeIDx"))) {
             if (poPayee.getEditMode() == EditMode.READY
                     && poPayee.getPayeeID().equals((String) getValue("sPayeeIDx"))) {
@@ -185,6 +191,9 @@ public class Model_Recurring_Expense extends Model {
     }
 
     public Model_Particular Particular() throws SQLException, GuanzonException {
+        if (poParticular == null) {
+            poParticular = new CashflowModels(poGRider).Particular();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poParticular.getEditMode() == EditMode.READY
                     && poParticular.getParticularID().equals((String) getValue("sPrtclrID"))) {

@@ -3,6 +3,7 @@ package ph.com.guanzongroup.cas.cashflow.model;
 import java.sql.SQLException;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.constant.EditMode;
@@ -41,10 +42,6 @@ public class Model_Recurring_Issuance extends Model {
             ID2 = "sBranchCd";
             ID3 = "sPayeeIDx";
             ID4 = "sAcctNoxx";
-
-            poBranch = new ParamModels(poGRider).Branch();
-            poPayee = new CashflowModels(poGRider).Payee();
-            poParticular = new CashflowModels(poGRider).Particular();
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -179,6 +176,9 @@ public class Model_Recurring_Issuance extends Model {
     }
 
     public Model_Particular Particular() throws SQLException, GuanzonException {
+        if (poParticular == null) {
+            poParticular = new CashflowModels(poGRider).Particular();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poParticular.getEditMode() == EditMode.READY
                     && poParticular.getParticularID().equals((String) getValue("sPrtclrID"))) {
@@ -200,14 +200,22 @@ public class Model_Recurring_Issuance extends Model {
     }
 
     public Model_Branch Branch() throws SQLException, GuanzonException {
+        if (poBranch == null) {
+            poBranch = new ParamModels(poGRider).Branch();
+        }
         if (!"".equals((String) getValue("sBranchCd"))) {
             if (poBranch.getEditMode() == EditMode.READY
                     && poBranch.getBranchCode().equals((String) getValue("sBranchCd"))) {
                 return poBranch;
             } else {
+                if (ReferenceCache.tryLoad("Branch", (String) getValue("sBranchCd"), poBranch)) {
+                    return poBranch;
+                }
+
                 poJSON = poBranch.openRecord((String) getValue("sBranchCd"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Branch", (String) getValue("sBranchCd"), poBranch);
                     return poBranch;
                 } else {
                     poBranch.initialize();
@@ -221,6 +229,9 @@ public class Model_Recurring_Issuance extends Model {
     }
 
     public Model_Payee Payee() throws SQLException, GuanzonException {
+        if (poPayee == null) {
+            poPayee = new CashflowModels(poGRider).Payee();
+        }
         if (!"".equals((String) getValue("sPayeeIDx"))) {
             if (poPayee.getEditMode() == EditMode.READY
                     && poPayee.getPayeeID().equals((String) getValue("sPayeeIDx"))) {

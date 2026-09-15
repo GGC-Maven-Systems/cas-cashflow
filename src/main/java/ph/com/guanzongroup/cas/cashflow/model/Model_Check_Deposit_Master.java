@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.constant.EditMode;
@@ -54,18 +55,6 @@ public class Model_Check_Deposit_Master extends Model {
             poEntity.updateNull("dModified");
             poEntity.updateString("cTranStat", CheckDepositStatus.OPEN);
 
-            this.poBranch = (new ParamModels(this.poGRider)).Branch();
-            this.poBankAccount = (new CashflowModels(this.poGRider)).Bank_Account_Master();
-            this.poIndustry = (new ParamModels(this.poGRider)).Industry();
-            this.poBanks = (new ParamModels(this.poGRider)).Banks();
-            this.poCompany =(new ParamModels(this.poGRider)).Company();
-            
-            poAPCBankAccount = new Model_AP_Client_Bank_Account();
-            poAPCBankAccount.setApplicationDriver(poGRider);
-            poAPCBankAccount.setXML("Model_AP_Client_Bank_Account");
-            poAPCBankAccount.setTableName("AP_Client_Bank_Account");
-            poAPCBankAccount.initialize();
-            
             poEntity.insertRow();
             poEntity.moveToCurrentRow();
 
@@ -248,6 +237,9 @@ public class Model_Check_Deposit_Master extends Model {
     }
 
     public Model_Bank_Account_Master BankAccount() throws SQLException, GuanzonException {
+        if (poBankAccount == null) {
+            poBankAccount = new CashflowModels(poGRider).Bank_Account_Master();
+        }
         if (!"".equals(getValue("sBnkActID"))) {
             if (this.poBankAccount.getEditMode() == 1 && this.poBankAccount
                     .getBankAccountId().equals(getValue("sBnkActID"))) {
@@ -265,6 +257,13 @@ public class Model_Check_Deposit_Master extends Model {
     }
 
     public Model_AP_Client_Bank_Account APClientBankAccount() throws SQLException, GuanzonException {
+        if (poAPCBankAccount == null) {
+            poAPCBankAccount = new Model_AP_Client_Bank_Account();
+            poAPCBankAccount.setApplicationDriver(poGRider);
+            poAPCBankAccount.setXML("Model_AP_Client_Bank_Account");
+            poAPCBankAccount.setTableName("AP_Client_Bank_Account");
+            poAPCBankAccount.initialize();
+        }
         if (!"".equals(getValue("sBnkActID"))) {
             if (this.poAPCBankAccount.getEditMode() == 1 && this.poAPCBankAccount
                     .getAPClientBankID().equals(getValue("sBnkActID"))) {
@@ -282,6 +281,9 @@ public class Model_Check_Deposit_Master extends Model {
     }
     
     public Model_Banks Banks() throws GuanzonException, SQLException {
+        if (poBanks == null) {
+            poBanks = new ParamModels(poGRider).Banks();
+        }
         if (!"".equals(getValue("sBnkActID"))) {
             bankid = BankAccount().getBankId();
             if (bankid == null || "".equals(bankid)) {
@@ -293,8 +295,12 @@ public class Model_Check_Deposit_Master extends Model {
                     && poBanks.getBankID().equals(bankid)) {
                 return poBanks;
             } else {
+                if (ReferenceCache.tryLoad("Banks", bankid, poBanks)) {
+                    return poBanks;
+                }
                 poJSON = poBanks.openRecord(bankid);
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Banks", bankid, poBanks);
                     return poBanks;
                 } else {
                     poBanks.initialize();
@@ -308,13 +314,20 @@ public class Model_Check_Deposit_Master extends Model {
     }
 
     public Model_Branch Branch() throws SQLException, GuanzonException {
+        if (poBranch == null) {
+            poBranch = new ParamModels(poGRider).Branch();
+        }
         if (!"".equals(getValue("sTransNox"))) {
             if (this.poBranch.getEditMode() == 1 && this.poBranch
                     .getBranchCode().equals(getValue("sTransNox").toString().substring(0, 4))) {
                 return this.poBranch;
             }
+            if (ReferenceCache.tryLoad("Branch", getValue("sTransNox").toString().substring(0, 4), poBranch)) {
+                return this.poBranch;
+            }
             this.poJSON = this.poBranch.openRecord(getValue("sTransNox").toString().substring(0, 4));
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Branch", getValue("sTransNox").toString().substring(0, 4), poBranch);
                 return this.poBranch;
             }
             this.poBranch.initialize();
@@ -323,17 +336,24 @@ public class Model_Check_Deposit_Master extends Model {
         this.poBranch.initialize();
         return this.poBranch;
     }
-    
-    
+
+
 
     public Model_Industry Industry() throws SQLException, GuanzonException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals(getValue("sIndstCdx"))) {
             if (this.poIndustry.getEditMode() == 1 && this.poIndustry
                     .getIndustryId().equals(getValue("sIndstCdx"))) {
                 return this.poIndustry;
             }
+            if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                return this.poIndustry;
+            }
             this.poJSON = this.poIndustry.openRecord((String) getValue("sIndstCdx"));
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                 return this.poIndustry;
             }
             this.poIndustry.initialize();
@@ -343,13 +363,20 @@ public class Model_Check_Deposit_Master extends Model {
         return this.poIndustry;
     }
     public Model_Company Company() throws SQLException, GuanzonException {
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (!"".equals(compnyID)) {
             if (this.poCompany.getEditMode() == 1 && this.poCompany
                     .getCompanyId().equals(compnyID)) {
                 return this.poCompany;
             }
+            if (ReferenceCache.tryLoad("Company", compnyID, poCompany)) {
+                return this.poCompany;
+            }
             this.poJSON = this.poCompany.openRecord(this.getCompany());
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Company", compnyID, poCompany);
                 return this.poCompany;
             }
             this.poCompany.initialize();

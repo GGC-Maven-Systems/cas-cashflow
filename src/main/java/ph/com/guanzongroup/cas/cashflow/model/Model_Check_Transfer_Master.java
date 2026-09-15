@@ -7,12 +7,14 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
 import org.guanzon.appdriver.constant.EditMode;
 import org.guanzon.appdriver.constant.RecordStatus;
 import org.guanzon.cas.client.model.Model_Client_Master;
+import org.guanzon.cas.client.services.ClientModels;
 import org.guanzon.cas.parameter.model.Model_Branch;
 import org.guanzon.cas.parameter.model.Model_Company;
 import org.guanzon.cas.parameter.model.Model_Department;
@@ -59,11 +61,6 @@ public class Model_Check_Transfer_Master extends Model {
             poEntity.updateObject("sModified", poGRider.getUserID());
             poEntity.updateObject("dModified", SQLUtil.toDate(xsDateShort(poGRider.getServerDate()), SQLUtil.FORMAT_SHORT_DATE));
 
-            this.poBranchDestination = (new ParamModels(this.poGRider)).Branch();
-            this.poBranch = (new ParamModels(this.poGRider)).Branch();
-            this.poDepartment = (new ParamModels(this.poGRider)).Department();
-            this.poIndustry = (new ParamModels(this.poGRider)).Industry();
-            this.poCompany= (new ParamModels(this.poGRider)).Company();
             poEntity.insertRow();
             poEntity.moveToCurrentRow();
 
@@ -294,13 +291,20 @@ public class Model_Check_Transfer_Master extends Model {
     }
     
     public Model_Branch BranchDestination() throws SQLException, GuanzonException {
+        if (poBranchDestination == null) {
+            poBranchDestination = new ParamModels(poGRider).Branch();
+        }
         if (!"".equals(getValue("sDestinat"))) {
             if (this.poBranchDestination.getEditMode() == EditMode.READY
                     && this.poBranchDestination.getBranchCode().equals((String)getValue("sDestinat"))) {
                 return this.poBranchDestination;
             }
+            if (ReferenceCache.tryLoad("Branch", (String) getValue("sDestinat"), poBranchDestination)) {
+                return this.poBranchDestination;
+            }
             this.poJSON = this.poBranchDestination.openRecord((String) getValue("sDestinat"));
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Branch", (String) getValue("sDestinat"), poBranchDestination);
                 return this.poBranchDestination;
             }
             this.poBranchDestination.initialize();
@@ -311,13 +315,20 @@ public class Model_Check_Transfer_Master extends Model {
     }
 
     public Model_Department Department() throws SQLException, GuanzonException {
+        if (poDepartment == null) {
+            poDepartment = new ParamModels(poGRider).Department();
+        }
         if (!"".equals(getValue("sDeptIDxx"))) {
             if (this.poDepartment.getEditMode() == EditMode.READY
                     && this.poDepartment.getDepartmentId().equals(getValue("sDeptIDxx"))) {
                 return this.poDepartment;
             }
+            if (ReferenceCache.tryLoad("Department", (String) getValue("sDeptIDxx"), poDepartment)) {
+                return this.poDepartment;
+            }
             this.poJSON = this.poDepartment.openRecord((String) getValue("sDeptIDxx"));
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Department", (String) getValue("sDeptIDxx"), poDepartment);
                 return this.poDepartment;
             }
             this.poDepartment.initialize();
@@ -328,13 +339,20 @@ public class Model_Check_Transfer_Master extends Model {
     }
 
     public Model_Branch Branch() throws GuanzonException, SQLException {
+        if (poBranch == null) {
+            poBranch = new ParamModels(poGRider).Branch();
+        }
         if (!"".equals((String) getValue("sDestinat"))) {
             if (poBranch.getEditMode() == EditMode.READY
                     && poBranch.getBranchCode().equals((String) getValue("sDestinat"))) {
                 return poBranch;
             } else {
+                if (ReferenceCache.tryLoad("Branch", (String) getValue("sDestinat"), poBranch)) {
+                    return poBranch;
+                }
                 poJSON = poBranch.openRecord((String) getValue("sDestinat"));
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Branch", (String) getValue("sDestinat"), poBranch);
                     return poBranch;
                 } else {
                     poBranch.initialize();
@@ -348,13 +366,20 @@ public class Model_Check_Transfer_Master extends Model {
     }
 
     public Model_Industry Industry() throws SQLException, GuanzonException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals(getValue("sIndstCdx"))) {
             if (this.poIndustry.getEditMode() == 1 && this.poIndustry
                     .getIndustryId().equals(getValue("sIndstCdx"))) {
                 return this.poIndustry;
             }
+            if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                return this.poIndustry;
+            }
             this.poJSON = this.poIndustry.openRecord((String) getValue("sIndstCdx"));
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                 return this.poIndustry;
             }
             this.poIndustry.initialize();
@@ -364,13 +389,20 @@ public class Model_Check_Transfer_Master extends Model {
         return this.poIndustry;
     }
     public Model_Company Company() throws SQLException, GuanzonException {
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (!"".equals(compnyID)) {
             if (this.poCompany.getEditMode() == 1 && this.poCompany
                     .getCompanyId().equals(compnyID)) {
                 return this.poCompany;
             }
+            if (ReferenceCache.tryLoad("Company", compnyID, poCompany)) {
+                return this.poCompany;
+            }
             this.poJSON = this.poCompany.openRecord(this.getCompany());
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Company", compnyID, poCompany);
                 return this.poCompany;
             }
             this.poCompany.initialize();
@@ -379,16 +411,23 @@ public class Model_Check_Transfer_Master extends Model {
         this.poCompany.initialize();
         return this.poCompany;
     }
-    
-    
+
+
     public Model_Client_Master PreparedClient() throws SQLException, GuanzonException {
+        if (poPrepareClient == null) {
+            poPrepareClient = new ClientModels(poGRider).ClientMaster();
+        }
         if (!"".equals(getValue("sPrepared"))) {
             if (this.poPrepareClient.getEditMode() == 1 && this.poPrepareClient
                     .getClientId().equals(getValue("sIndstCdx"))) {
                 return this.poPrepareClient;
             }
+            if (ReferenceCache.tryLoad("Client_Master", (String) getValue("sIndstCdx"), poPrepareClient)) {
+                return this.poPrepareClient;
+            }
             this.poJSON = this.poPrepareClient.openRecord((String) getValue("sIndstCdx"));
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Client_Master", (String) getValue("sIndstCdx"), poPrepareClient);
                 return this.poPrepareClient;
             }
             this.poPrepareClient.initialize();

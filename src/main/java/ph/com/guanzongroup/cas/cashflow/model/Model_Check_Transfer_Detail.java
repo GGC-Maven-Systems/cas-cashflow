@@ -3,6 +3,7 @@ package ph.com.guanzongroup.cas.cashflow.model;
 import java.sql.SQLException;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.constant.EditMode;
@@ -45,9 +46,6 @@ public class Model_Check_Transfer_Detail extends Model {
             ID = poEntity.getMetaData().getColumnLabel(1);
             ID2 = poEntity.getMetaData().getColumnLabel(2);
 
-            poCheckPayment = new CashflowModels(poGRider).CheckPayments();
-            poPayee = new CashflowModels(poGRider).Payee();
-            poBanks = new ParamModels(poGRider).Banks();
 //            poCheckReceive =  new CashflowModels(poGRider).CheckReceive();
 
             pnEditMode = EditMode.UNKNOWN;
@@ -151,6 +149,9 @@ public class Model_Check_Transfer_Detail extends Model {
     }
 
     public Model_Check_Payments CheckPayment() throws SQLException, GuanzonException {
+        if (poCheckPayment == null) {
+            poCheckPayment = new CashflowModels(poGRider).CheckPayments();
+        }
         if (!"".equals(getValue("sSourceNo"))) {
             if (this.poCheckPayment.getEditMode() == 1 && this.poCheckPayment
                     .getTransactionNo().equals(getValue("sSourceNo"))) {
@@ -168,13 +169,20 @@ public class Model_Check_Transfer_Detail extends Model {
     }
     
     public Model_Banks Banks() throws GuanzonException, SQLException {
+        if (poBanks == null) {
+            poBanks = new ParamModels(poGRider).Banks();
+        }
         if (!"".equals((String) getValue("sBankIDxx"))) {
             if (poBanks.getEditMode() == EditMode.READY
                     && poBanks.getBankID().equals((String) getValue("sBankIDxx"))) {
                 return poBanks;
             } else {
+                if (ReferenceCache.tryLoad("Banks", (String) getValue("sBankIDxx"), poBanks)) {
+                    return poBanks;
+                }
                 poJSON = poBanks.openRecord((String) getValue("sBankIDxx"));
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Banks", (String) getValue("sBankIDxx"), poBanks);
                     return poBanks;
                 } else {
                     poBanks.initialize();
@@ -186,8 +194,11 @@ public class Model_Check_Transfer_Detail extends Model {
             return poBanks;
         }
     }
-    
+
         public Model_Payee Payee() throws GuanzonException, SQLException {
+        if (poPayee == null) {
+            poPayee = new CashflowModels(poGRider).Payee();
+        }
         if (!"".equals((String) getValue("sPayeeIDx"))) {
             if (poPayee.getEditMode() == EditMode.READY
                     && poPayee.getPayeeID().equals((String) getValue("sPayeeIDx"))) {

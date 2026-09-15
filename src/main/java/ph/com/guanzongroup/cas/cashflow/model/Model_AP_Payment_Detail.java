@@ -33,7 +33,6 @@ public class Model_AP_Payment_Detail extends Model {
 
     //reference objects
     Model_Payment_Request_Master poPaymentRequest;
-    Model_Cache_Payable_Master poCachePayable;
     Model_POR_Master poPOReceiving;
     Model_POReturn_Master poPOReturn;
     Model_AP_Payment_Adjustment poAPAdjustment;
@@ -70,23 +69,16 @@ public class Model_AP_Payment_Detail extends Model {
             ID = "sTransNox";
             ID2 = "nEntryNox";
 
-            //initialize reference objects
-            CashflowModels gl = new CashflowModels(poGRider);
-            poPaymentRequest = gl.PaymentRequestMaster();
-            poCachePayable = gl.Cache_Payable_Master();
-            poAPAdjustment = gl.APPaymentAdjustment();
-            
+            //initialize reference objects (non-Model transaction wrappers only - the
+            //services.Model reference fields below (poPaymentRequest, poAPAdjustment,
+            //poPOReceiving, poPOReturn) are intentionally NOT constructed here - see their
+            //accessor methods, which build them lazily on first access)
             CashflowControllers glController = new CashflowControllers(poGRider, logwrapr);
             poCachePayableTrans = glController.CachePayable();
             poAPAdjustmentTrans = glController.APPaymentAdjustment();
-            
-            PurchaseOrderReceivingModels POR = new PurchaseOrderReceivingModels(poGRider);
-            poPOReceiving = POR.PurchaseOrderReceivingMaster();
+
             PurchaseOrderReceivingControllers PORController = new PurchaseOrderReceivingControllers(poGRider, logwrapr);
             poPOReceivingTrans = PORController.PurchaseOrderReceiving();
-            
-            PurchaseOrderReturnModels POReturn = new PurchaseOrderReturnModels(poGRider);
-            poPOReturn = POReturn.PurchaseOrderReturnMaster();
             //end - initialize reference objects
 
             pnEditMode = EditMode.UNKNOWN;
@@ -208,6 +200,9 @@ public class Model_AP_Payment_Detail extends Model {
 
     //reference object models
     public Model_Payment_Request_Master PaymentRequestMaster() throws SQLException, GuanzonException {
+        if (poPaymentRequest == null) {
+            poPaymentRequest = new CashflowModels(poGRider).PaymentRequestMaster();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if (poPaymentRequest.getEditMode() == EditMode.READY
                     && poPaymentRequest.getTransactionNo().equals((String) getValue("sSourceNo"))) {
@@ -271,6 +266,9 @@ public class Model_AP_Payment_Detail extends Model {
 //    }
     
     public Model_AP_Payment_Adjustment APPaymentAdjustmentMaster() throws SQLException, GuanzonException {
+        if (poAPAdjustment == null) {
+            poAPAdjustment = new CashflowModels(poGRider).APPaymentAdjustment();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if (poAPAdjustment.getEditMode() == EditMode.READY
                     && poAPAdjustment.getTransactionNo().equals((String) getValue("sSourceNo"))) {
@@ -313,6 +311,9 @@ public class Model_AP_Payment_Detail extends Model {
     }
     
     public Model_POR_Master PurchasOrderReceivingMaster() throws SQLException, GuanzonException {
+        if (poPOReceiving == null) {
+            poPOReceiving = new PurchaseOrderReceivingModels(poGRider).PurchaseOrderReceivingMaster();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if (poPOReceiving.getEditMode() == EditMode.READY
                     && poPOReceiving.getTransactionNo().equals((String) getValue("sSourceNo"))) {
@@ -334,6 +335,9 @@ public class Model_AP_Payment_Detail extends Model {
     }
     
     public Model_POReturn_Master PurchasOrderReturnMaster() throws SQLException, GuanzonException {
+        if (poPOReturn == null) {
+            poPOReturn = new PurchaseOrderReturnModels(poGRider).PurchaseOrderReturnMaster();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if (poPOReturn.getEditMode() == EditMode.READY
                     && poPOReturn.getTransactionNo().equals((String) getValue("sSourceNo"))) {

@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.constant.EditMode;
 import org.guanzon.cas.parameter.model.Model_Inv_Type;
 import org.guanzon.cas.parameter.services.ParamModels;
@@ -41,9 +42,9 @@ public class Model_Cache_Payable_Detail extends Model {
             ID = "sTransNox";
             ID2 = "nEntryNox";
             
-            ParamModels model = new ParamModels(poGRider);
-            poInvType = model.InventoryType();
-            
+            //poInvType is intentionally NOT constructed here - see InvType() below, which
+            //builds it lazily on first access so opening this record never touches Inv_Type.
+
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
             logwrapr.severe(e.getMessage());
@@ -129,14 +130,22 @@ public class Model_Cache_Payable_Detail extends Model {
     }
     
     public Model_Inv_Type InvType() throws SQLException, GuanzonException {
+        if (poInvType == null) {
+            poInvType = new ParamModels(poGRider).InventoryType();
+        }
         if (!"".equals((String) getValue("sTranType"))) {
             if (poInvType.getEditMode() == EditMode.READY
                     && poInvType.getInventoryTypeId().equals((String) getValue("sTranType"))) {
                 return poInvType;
             } else {
+                if (ReferenceCache.tryLoad("Inv_Type", (String) getValue("sTranType"), poInvType)) {
+                    return poInvType;
+                }
+
                 poJSON = poInvType.openRecord((String) getValue("sTranType"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Inv_Type", (String) getValue("sTranType"), poInvType);
                     return poInvType;
                 } else {
                     poInvType.initialize();

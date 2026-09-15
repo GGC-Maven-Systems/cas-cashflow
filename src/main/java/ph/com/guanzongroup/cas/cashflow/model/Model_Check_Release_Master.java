@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
@@ -66,12 +67,7 @@ public class Model_Check_Release_Master extends Model{
 
             //Step 7. get primary id from metadata, and initialized to variable as row id
             ID = poEntity.getMetaData().getColumnLabel(1);
-            
-            //add model here
-            ParamModels model = new ParamModels(poGRider);
-            poIndustry = model.Industry();
-            poCompany= model.Company();
-            
+
             pnEditMode = EditMode.UNKNOWN;
             
         }catch(SQLException e){
@@ -210,14 +206,21 @@ public class Model_Check_Release_Master extends Model{
     }
 
     public Model_Industry Industry() throws SQLException, GuanzonException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals((String) getValue("sIndstCdx"))) {
             if (poIndustry.getEditMode() == EditMode.READY
                     && poIndustry.getIndustryId().equals((String) getValue("sIndstCdx"))) {
                 return poIndustry;
             } else {
+                if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                    return poIndustry;
+                }
                 poJSON = poIndustry.openRecord((String) getValue("sIndstCdx"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                     return poIndustry;
                 } else {
                     poIndustry.initialize();
@@ -230,13 +233,20 @@ public class Model_Check_Release_Master extends Model{
         }
     }
     public Model_Company Company() throws SQLException, GuanzonException {
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (!"".equals(compnyID)) {
             if (this.poCompany.getEditMode() == 1 && this.poCompany
                     .getCompanyId().equals(compnyID)) {
                 return this.poCompany;
             }
+            if (ReferenceCache.tryLoad("Company", compnyID, poCompany)) {
+                return this.poCompany;
+            }
             this.poJSON = this.poCompany.openRecord(this.getCompany());
             if ("success".equals(this.poJSON.get("result"))) {
+                ReferenceCache.store("Company", compnyID, poCompany);
                 return this.poCompany;
             }
             this.poCompany.initialize();

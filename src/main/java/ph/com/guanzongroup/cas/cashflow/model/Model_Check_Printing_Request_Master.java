@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
@@ -57,13 +58,6 @@ public class Model_Check_Printing_Request_Master extends Model {
             poEntity.absolute(1);
             ID = "sTransNox";
 
-            ParamModels model = new ParamModels(poGRider);
-            poCompany = model.Company();
-
-            poIndustry = model.Industry();
-            poBanks = model.Banks();
-            CashflowModels cModel = new CashflowModels(poGRider);
-            poBankAccountMaster = cModel.Bank_Account_Master();
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
             logwrapr.severe(e.getMessage());
@@ -195,13 +189,20 @@ public class Model_Check_Printing_Request_Master extends Model {
     }
 
     public Model_Banks Banks() throws GuanzonException, SQLException {
+        if (poBanks == null) {
+            poBanks = new ParamModels(poGRider).Banks();
+        }
         if (!"".equals((String) getValue("sBankIDxx"))) {
             if (poBanks.getEditMode() == EditMode.READY
                     && poBanks.getBankID().equals((String) getValue("sBankIDxx"))) {
                 return poBanks;
             } else {
+                if (ReferenceCache.tryLoad("Banks", (String) getValue("sBankIDxx"), poBanks)) {
+                    return poBanks;
+                }
                 poJSON = poBanks.openRecord((String) getValue("sBankIDxx"));
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Banks", (String) getValue("sBankIDxx"), poBanks);
                     return poBanks;
                 } else {
                     poBanks.initialize();
@@ -215,14 +216,21 @@ public class Model_Check_Printing_Request_Master extends Model {
     }
 
     public Model_Company Company() throws SQLException, GuanzonException {
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (!"".equals(psCompanyID)) {
             if (poCompany.getEditMode() == EditMode.READY
                     && poCompany.getCompanyId().equals(psCompanyID)) {
                 return poCompany;
             } else {
+                if (ReferenceCache.tryLoad("Company", psCompanyID, poCompany)) {
+                    return poCompany;
+                }
                 poJSON = poCompany.openRecord(psCompanyID);
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Company", psCompanyID, poCompany);
                     return poCompany;
                 } else {
                     poCompany.initialize();
@@ -236,13 +244,20 @@ public class Model_Check_Printing_Request_Master extends Model {
     }
 
     public Model_Industry Industry() throws GuanzonException, SQLException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals((String) getValue("sIndstCdx"))) {
             if (poIndustry.getEditMode() == EditMode.READY
                     && poIndustry.getIndustryId().equals((String) getValue("sIndstCdx"))) {
                 return poIndustry;
             } else {
+                if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                    return poIndustry;
+                }
                 poJSON = poIndustry.openRecord((String) getValue("sIndstCdx"));
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                     return poIndustry;
                 } else {
                     poIndustry.initialize();
@@ -256,6 +271,9 @@ public class Model_Check_Printing_Request_Master extends Model {
     }
 
     public Model_Bank_Account_Master Bank_Account_Master() throws GuanzonException, SQLException {
+        if (poBankAccountMaster == null) {
+            poBankAccountMaster = new CashflowModels(poGRider).Bank_Account_Master();
+        }
         if (!"".equals(psBankAccountID)) {
             if (poBankAccountMaster.getEditMode() == EditMode.READY
                     && poBankAccountMaster.getBankAccountId().equals(psBankAccountID)) {

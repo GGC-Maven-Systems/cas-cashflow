@@ -10,12 +10,13 @@ import java.sql.SQLException;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.constant.EditMode;
 import org.guanzon.appdriver.constant.RecordStatus;
+import org.guanzon.cas.parameter.model.Model_Account_Chart;
 import org.guanzon.cas.parameter.model.Model_Tax_Code;
 import org.guanzon.cas.parameter.services.ParamModels;
 import org.json.simple.JSONObject;
-import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 
 /**
  *
@@ -47,14 +48,6 @@ public class Model_Withholding_Tax extends Model {
             poEntity.absolute(1);
 
             ID = "sTaxRteID";
-
-            //initialize reference objects
-            ParamModels model = new ParamModels(poGRider);
-            poTaxCode = model.TaxCode();
-
-            CashflowModels gl = new CashflowModels(poGRider);
-            poAccountChart = gl.Account_Chart();
-//            end - initialize reference objects
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -146,14 +139,21 @@ public class Model_Withholding_Tax extends Model {
 
     //reference object models
     public Model_Account_Chart AccountChart() throws SQLException, GuanzonException {
+        if (poAccountChart == null) {
+            poAccountChart = new ParamModels(poGRider).AccountChart();
+        }
         if (!"".equals((String) getValue("sAcctCode"))) {
             if (poAccountChart.getEditMode() == EditMode.READY
                     && poAccountChart.getAccountCode().equals((String) getValue("sAcctCode"))) {
                 return poAccountChart;
             } else {
+                if (ReferenceCache.tryLoad("Account_Chart", (String) getValue("sAcctCode"), poAccountChart)) {
+                    return poAccountChart;
+                }
                 poJSON = poAccountChart.openRecord((String) getValue("sAcctCode"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Account_Chart", (String) getValue("sAcctCode"), poAccountChart);
                     return poAccountChart;
                 } else {
                     poAccountChart.initialize();
@@ -167,14 +167,21 @@ public class Model_Withholding_Tax extends Model {
     }
 
     public Model_Tax_Code TaxCode() throws SQLException, GuanzonException {
+        if (poTaxCode == null) {
+            poTaxCode = new ParamModels(poGRider).TaxCode();
+        }
         if (!"".equals((String) getValue("sATaxCode"))) {
             if (poTaxCode.getEditMode() == EditMode.READY
                     && poTaxCode.getTaxCode().equals((String) getValue("sATaxCode"))) {
                 return poTaxCode;
             } else {
+                if (ReferenceCache.tryLoad("Tax_Code", (String) getValue("sATaxCode"), poTaxCode)) {
+                    return poTaxCode;
+                }
                 poJSON = poTaxCode.openRecord((String) getValue("sATaxCode"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Tax_Code", (String) getValue("sATaxCode"), poTaxCode);
                     return poTaxCode;
                 } else {
                     poTaxCode.initialize();

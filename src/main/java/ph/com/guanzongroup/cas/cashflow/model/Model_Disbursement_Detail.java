@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
@@ -85,19 +86,6 @@ public class Model_Disbursement_Detail extends Model {
             ID = "sTransNox";
             ID2 = "nEntryNox";
 
-            CashflowModels cashFlow = new CashflowModels(poGRider);
-            poParticular = cashFlow.Particular();
-            poPRF = cashFlow.PaymentRequestMaster();
-            poAPMaster = cashFlow.SOATaggingMaster();
-            poAPDetail = cashFlow.SOATaggingDetails();
-            poAPAdjustment = cashFlow.APPaymentAdjustment();
-            ParamModels model = new ParamModels(poGRider);
-            poTaxCode = model.TaxCode();
-            poInvType = model.InventoryType();
-            PurchaseOrderReceivingModels POReceiving = new PurchaseOrderReceivingModels(poGRider);
-            poPOR = POReceiving.PurchaseOrderReceivingMaster();
-            PurchaseOrderReturnModels POReturn = new PurchaseOrderReturnModels(poGRider);
-            poPOReturn = POReturn.PurchaseOrderReturnMaster();
             //end - initialize reference objects
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -566,6 +554,9 @@ public class Model_Disbursement_Detail extends Model {
     }
 
     public Model_Particular Particular() throws SQLException, GuanzonException {
+        if (poParticular == null) {
+            poParticular = new CashflowModels(poGRider).Particular();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poParticular.getEditMode() == EditMode.READY
                     && poParticular.getParticularID().equals((String) getValue("sPrtclrID"))) {
@@ -587,14 +578,22 @@ public class Model_Disbursement_Detail extends Model {
     }
 
     public Model_Tax_Code TaxCode() throws SQLException, GuanzonException {
+        if (poTaxCode == null) {
+            poTaxCode = new ParamModels(poGRider).TaxCode();
+        }
         if (!"".equals((String) getValue("sTaxCodex"))) {
             if (poTaxCode.getEditMode() == EditMode.READY
                     && poTaxCode.getTaxCode().equals((String) getValue("sTaxCodex"))) {
                 return poTaxCode;
             } else {
+                if (ReferenceCache.tryLoad("Tax_Code", (String) getValue("sTaxCodex"), poTaxCode)) {
+                    return poTaxCode;
+                }
+
                 poJSON = poTaxCode.openRecord((String) getValue("sTaxCodex"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Tax_Code", (String) getValue("sTaxCodex"), poTaxCode);
                     return poTaxCode;
                 } else {
                     poTaxCode.initialize();
@@ -608,14 +607,22 @@ public class Model_Disbursement_Detail extends Model {
     }
 
     public Model_Inv_Type InvType() throws SQLException, GuanzonException {
+        if (poInvType == null) {
+            poInvType = new ParamModels(poGRider).InventoryType();
+        }
         if (!"".equals(InvType)) {
             if (poInvType.getEditMode() == EditMode.READY
                     && poInvType.getInventoryTypeId().equals(InvType)) {
                 return poInvType;
             } else {
+                if (ReferenceCache.tryLoad("Inv_Type", InvType, poInvType)) {
+                    return poInvType;
+                }
+
                 poJSON = poInvType.openRecord(InvType);
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Inv_Type", InvType, poInvType);
                     return poInvType;
                 } else {
                     poInvType.initialize();
@@ -629,6 +636,9 @@ public class Model_Disbursement_Detail extends Model {
     }
 
     public Model_Payment_Request_Master PRF() throws SQLException, GuanzonException {
+        if (poPRF == null) {
+            poPRF = new CashflowModels(poGRider).PaymentRequestMaster();
+        }
         String lsSourceNo = (String) getValue("sSourceNo");
         if(DisbursementStatic.SourceCode.ACCOUNTS_PAYABLE.equals((String) getValue("sSourceCd"))){
             lsSourceNo = (String) getValue("sDetlSrce");
@@ -655,6 +665,9 @@ public class Model_Disbursement_Detail extends Model {
     }
 
     public Model_POR_Master POReceiving() throws SQLException, GuanzonException {
+        if (poPOR == null) {
+            poPOR = new PurchaseOrderReceivingModels(poGRider).PurchaseOrderReceivingMaster();
+        }
         String lsSourceNo = (String) getValue("sSourceNo");
         if(DisbursementStatic.SourceCode.ACCOUNTS_PAYABLE.equals((String) getValue("sSourceCd"))){
             lsSourceNo = (String) getValue("sDetlSrce");
@@ -681,6 +694,9 @@ public class Model_Disbursement_Detail extends Model {
     }
     
     public Model_POReturn_Master POReturn() throws SQLException, GuanzonException {
+        if (poPOReturn == null) {
+            poPOReturn = new PurchaseOrderReturnModels(poGRider).PurchaseOrderReturnMaster();
+        }
         String lsSourceNo = (String) getValue("sSourceNo");
         if(DisbursementStatic.SourceCode.ACCOUNTS_PAYABLE.equals((String) getValue("sSourceCd"))){
             lsSourceNo = (String) getValue("sDetlSrce");
@@ -708,6 +724,9 @@ public class Model_Disbursement_Detail extends Model {
 
 
     public Model_AP_Payment_Detail SOADetail() throws SQLException, GuanzonException {
+        if (poAPDetail == null) {
+            poAPDetail = new CashflowModels(poGRider).SOATaggingDetails();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if ((poAPDetail.getEditMode() == EditMode.READY || poPOR.getEditMode() == EditMode.UPDATE)
                     && poAPDetail.getTransactionNo().equals((String) getValue("sSourceNo"))
@@ -730,6 +749,9 @@ public class Model_Disbursement_Detail extends Model {
     }
     
     public Model_AP_Payment_Master SOAMaster() throws SQLException, GuanzonException {
+        if (poAPMaster == null) {
+            poAPMaster = new CashflowModels(poGRider).SOATaggingMaster();
+        }
         String lsSourceNo = (String) getValue("sSourceNo");
         if (!"".equals(lsSourceNo)) {
             if ((poAPMaster.getEditMode() == EditMode.READY || poAPMaster.getEditMode() == EditMode.UPDATE)
@@ -752,6 +774,9 @@ public class Model_Disbursement_Detail extends Model {
     }
     
     public Model_AP_Payment_Adjustment APAdjustment() throws SQLException, GuanzonException {
+        if (poAPAdjustment == null) {
+            poAPAdjustment = new CashflowModels(poGRider).APPaymentAdjustment();
+        }
         String lsSourceNo = (String) getValue("sSourceNo");
         if(DisbursementStatic.SourceCode.ACCOUNTS_PAYABLE.equals((String) getValue("sSourceCd"))){
             lsSourceNo = (String) getValue("sDetlSrce");

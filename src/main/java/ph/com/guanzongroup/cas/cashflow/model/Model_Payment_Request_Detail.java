@@ -51,11 +51,6 @@ public class Model_Payment_Request_Detail extends Model {
             ID = "sTransNox";
             ID2 = "nEntryNox";
 
-            CashflowModels cashFlow = new CashflowModels(poGRider);
-            poParticular = cashFlow.Particular();
-            poRecurring = cashFlow.Recurring_Issuance();
-            poRecurringExpense = cashFlow.Recurring_Expense_Payment_Monitor();
-
             //end - initialize reference objects
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -201,6 +196,9 @@ public class Model_Payment_Request_Detail extends Model {
     }
 
     public Model_Particular Particular() throws SQLException, GuanzonException {
+        if (poParticular == null) {
+            poParticular = new CashflowModels(poGRider).Particular();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poParticular.getEditMode() == EditMode.READY
                     && poParticular.getParticularID().equals((String) getValue("sPrtclrID"))) {
@@ -222,6 +220,9 @@ public class Model_Payment_Request_Detail extends Model {
     }
 
     public Model_Recurring_Issuance Recurring() throws GuanzonException, SQLException {
+        if (poRecurring == null) {
+            poRecurring = new CashflowModels(poGRider).Recurring_Issuance();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poRecurring.getEditMode() == EditMode.READY
                     && poRecurring.getParticularID().equals((String) getValue("sPrtclrID"))) {
@@ -242,6 +243,9 @@ public class Model_Payment_Request_Detail extends Model {
     }
     
     public Model_Recurring_Expense_Payment_Monitor RecurringExpensePaymentMonitor() throws GuanzonException, SQLException {
+        if (poRecurringExpense == null) {
+            poRecurringExpense = new CashflowModels(poGRider).Recurring_Expense_Payment_Monitor();
+        }
         if (!"".equals((String) getValue("sRecurrNo"))) {
             if (poRecurringExpense.getEditMode() == EditMode.READY
                     && poRecurringExpense.getTransactionNo().equals((String) getValue("sRecurrNo"))) {

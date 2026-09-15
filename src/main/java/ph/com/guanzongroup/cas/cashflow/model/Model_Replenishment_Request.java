@@ -8,6 +8,7 @@ package ph.com.guanzongroup.cas.cashflow.model;
 import java.util.Date;
 import java.sql.SQLException;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.constant.EditMode;
@@ -55,16 +56,6 @@ public class Model_Replenishment_Request extends Model {
             poEntity.absolute(1);
 
             ID = "sTransNox";
-
-            //initialize reference objects
-            ParamModels model = new ParamModels(poGRider);
-            poIndustry = model.Industry();
-            poCompany = model.Company();
-            
-            CashflowModels gl = new CashflowModels(poGRider);
-            poCashFund = gl.CashFund();
-            poPettyCash = gl.PettyCashMaster();
-//            end - initialize reference objects
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -172,6 +163,9 @@ public class Model_Replenishment_Request extends Model {
 
     //reference object models
     public Model_Cash_Fund CashFund() throws SQLException, GuanzonException {
+        if (poCashFund == null) {
+            poCashFund = new CashflowModels(poGRider).CashFund();
+        }
         if (!"".equals((String) getValue("sFundIdxx"))) {
             if (poCashFund.getEditMode() == EditMode.READY
                     && poCashFund.getCashFundId().equals((String) getValue("sFundIdxx"))) {
@@ -193,6 +187,9 @@ public class Model_Replenishment_Request extends Model {
     }
     
     public Model_PettyCash PettyCash() throws SQLException, GuanzonException {
+        if (poPettyCash == null) {
+            poPettyCash = new CashflowModels(poGRider).PettyCashMaster();
+        }
         if (!"".equals((String) getValue("sFundIdxx"))) {
             if (poPettyCash.getEditMode() == EditMode.READY
                     && poPettyCash.getPettyId().equals((String) getValue("sFundIdxx"))) {
@@ -214,6 +211,9 @@ public class Model_Replenishment_Request extends Model {
     }
 
     public Model_Industry Industry() throws SQLException, GuanzonException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (Logical.YES.equals((String) getValue("cFundType"))) {
             if (!"".equals((String) getValue("sFundIdxx")) && (String) getValue("sFundIdxx") != null) {
                 psIndustry = PettyCash().getIndustryId();
@@ -223,15 +223,20 @@ public class Model_Replenishment_Request extends Model {
                 psIndustry = CashFund().getIndustryId();
             }
         }
-        
+
         if (!"".equals(psIndustry)) {
             if (poIndustry.getEditMode() == EditMode.READY
                     && poIndustry.getIndustryId().equals(psIndustry)) {
                 return poIndustry;
             } else {
+                if (ReferenceCache.tryLoad("Industry", psIndustry, poIndustry)) {
+                    return poIndustry;
+                }
+
                 poJSON = poIndustry.openRecord(psIndustry);
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Industry", psIndustry, poIndustry);
                     return poIndustry;
                 } else {
                     poIndustry.initialize();
@@ -245,6 +250,9 @@ public class Model_Replenishment_Request extends Model {
     }
 
     public Model_Company Company() throws SQLException, GuanzonException {
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (Logical.YES.equals((String) getValue("cFundType"))) {
             if (!"".equals((String) getValue("sFundIdxx")) && (String) getValue("sFundIdxx") != null) {
                 psCompany = PettyCash().getCompanyId();
@@ -254,15 +262,20 @@ public class Model_Replenishment_Request extends Model {
                 psCompany = CashFund().getCompanyId();
             }
         }
-        
+
         if (!"".equals(psCompany)) {
             if (poCompany.getEditMode() == EditMode.READY
                     && poCompany.getCompanyId().equals(psCompany)) {
                 return poCompany;
             } else {
+                if (ReferenceCache.tryLoad("Company", psCompany, poCompany)) {
+                    return poCompany;
+                }
+
                 poJSON = poCompany.openRecord(psCompany);
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Company", psCompany, poCompany);
                     return poCompany;
                 } else {
                     poCompany.initialize();

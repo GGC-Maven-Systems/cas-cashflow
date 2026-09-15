@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.constant.EditMode;
@@ -24,7 +25,6 @@ public class Model_Recurring_Expense_Schedule extends Model {
 
     Model_Industry poIndustry;
     Model_Branch poBranch;
-    Model_Particular poParticular;
     Model_Payee poPayee;
     Model_Client_Master poClient;
     Model_Department poDepartment;
@@ -57,20 +57,6 @@ public class Model_Recurring_Expense_Schedule extends Model {
             //end - assign default values
 
             ID = poEntity.getMetaData().getColumnLabel(1);
-            
-            ClientModels clientModel = new ClientModels(poGRider);
-            poClient = clientModel.ClientMaster();
-            
-            ParamModels model = new ParamModels(poGRider);
-            poIndustry = model.Industry();
-            poBranch = model.Branch();
-            poDepartment = model.Department();
-            poCompany = model.Company();
-
-            CashflowModels gl = new CashflowModels(poGRider);
-            poParticular = gl.Particular();
-            poPayee = gl.Payee();
-            poRecurringExpense = gl.Recurring_Expense();
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -263,14 +249,22 @@ public class Model_Recurring_Expense_Schedule extends Model {
     }
     
     public Model_Industry Industry() throws SQLException, GuanzonException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals((String) getValue("sIndstCdx"))) {
             if (poIndustry.getEditMode() == EditMode.READY
                     && poIndustry.getIndustryId().equals((String) getValue("sIndstCdx"))) {
                 return poIndustry;
             } else {
+                if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                    return poIndustry;
+                }
+
                 poJSON = poIndustry.openRecord((String) getValue("sIndstCdx"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                     return poIndustry;
                 } else {
                     poIndustry.initialize();
@@ -284,6 +278,9 @@ public class Model_Recurring_Expense_Schedule extends Model {
     }
 
     public Model_Payee Payee() throws SQLException, GuanzonException {
+        if (poPayee == null) {
+            poPayee = new CashflowModels(poGRider).Payee();
+        }
         if (!"".equals((String) getValue("sPayeeIDx"))) {
             if (poPayee.getEditMode() == EditMode.READY
                     && poPayee.getPayeeID().equals((String) getValue("sPayeeIDx"))) {
@@ -305,14 +302,22 @@ public class Model_Recurring_Expense_Schedule extends Model {
     }
 
     public Model_Branch Branch() throws SQLException, GuanzonException {
+        if (poBranch == null) {
+            poBranch = new ParamModels(poGRider).Branch();
+        }
         if (!"".equals((String) getValue("sBranchCd"))) {
             if (poBranch.getEditMode() == EditMode.READY
                     && poBranch.getBranchCode().equals((String) getValue("sBranchCd"))) {
                 return poBranch;
             } else {
+                if (ReferenceCache.tryLoad("Branch", (String) getValue("sBranchCd"), poBranch)) {
+                    return poBranch;
+                }
+
                 poJSON = poBranch.openRecord((String) getValue("sBranchCd"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Branch", (String) getValue("sBranchCd"), poBranch);
                     return poBranch;
                 } else {
                     poBranch.initialize();
@@ -324,18 +329,26 @@ public class Model_Recurring_Expense_Schedule extends Model {
             return poBranch;
         }
     }
-    
+
     public Model_Company Company() throws SQLException, GuanzonException{
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (!"".equals((String) getValue("sCompnyID"))){
-            if (poCompany.getEditMode() == EditMode.READY && 
+            if (poCompany.getEditMode() == EditMode.READY &&
                 poCompany.getCompanyId().equals((String) getValue("sCompnyID")))
                 return poCompany;
             else{
+                if (ReferenceCache.tryLoad("Company", (String) getValue("sCompnyID"), poCompany)) {
+                    return poCompany;
+                }
+
                 poJSON = poCompany.openRecord((String) getValue("sCompnyID"));
 
-                if ("success".equals((String) poJSON.get("result")))
+                if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Company", (String) getValue("sCompnyID"), poCompany);
                     return poCompany;
-                else {
+                } else {
                     poCompany.initialize();
                     return poCompany;
                 }
@@ -347,14 +360,22 @@ public class Model_Recurring_Expense_Schedule extends Model {
     }
 
     public Model_Department Department() throws SQLException, GuanzonException {
+        if (poDepartment == null) {
+            poDepartment = new ParamModels(poGRider).Department();
+        }
         if (!"".equals((String) getValue("sDeptIDxx"))) {
             if (poDepartment.getEditMode() == EditMode.READY
                     && poDepartment.getDepartmentId().equals((String) getValue("sDeptIDxx"))) {
                 return poDepartment;
             } else {
+                if (ReferenceCache.tryLoad("Department", (String) getValue("sDeptIDxx"), poDepartment)) {
+                    return poDepartment;
+                }
+
                 poJSON = poDepartment.openRecord((String) getValue("sDeptIDxx"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Department", (String) getValue("sDeptIDxx"), poDepartment);
                     return poDepartment;
                 } else {
                     poDepartment.initialize();
@@ -368,14 +389,22 @@ public class Model_Recurring_Expense_Schedule extends Model {
     }
 
     public Model_Client_Master Employee() throws SQLException, GuanzonException {
+        if (poClient == null) {
+            poClient = new ClientModels(poGRider).ClientMaster();
+        }
         if (!"".equals((String) getValue("sEmployID"))) {
             if (poClient.getEditMode() == EditMode.READY
                     && poClient.getClientId().equals((String) getValue("sEmployID"))) {
                 return poClient;
             } else {
+                if (ReferenceCache.tryLoad("Client_Master", (String) getValue("sEmployID"), poClient)) {
+                    return poClient;
+                }
+
                 poJSON = poClient.openRecord((String) getValue("sEmployID"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Client_Master", (String) getValue("sEmployID"), poClient);
                     return poClient;
                 } else {
                     poClient.initialize();
@@ -389,6 +418,9 @@ public class Model_Recurring_Expense_Schedule extends Model {
     }
 
     public Model_Recurring_Expense RecurringExpense() throws SQLException, GuanzonException {
+        if (poRecurringExpense == null) {
+            poRecurringExpense = new CashflowModels(poGRider).Recurring_Expense();
+        }
         if (!"".equals((String) getValue("sRecurrID"))) {
             if (poRecurringExpense.getEditMode() == EditMode.READY
                     && poRecurringExpense.getRecurringId().equals((String) getValue("sRecurrID"))) {

@@ -55,11 +55,6 @@ public class Model_Cash_Fund_Ledger extends Model {
             ID3 = "sSourceNo";
 //            ID4 = "cReversex";
 
-            //initialize reference objects
-            CashflowModels gl = new CashflowModels(poGRider);
-            poCashFund = gl.CashFund();
-//            end - initialize reference objects
-
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
             logwrapr.severe(e.getMessage());
@@ -168,6 +163,9 @@ public class Model_Cash_Fund_Ledger extends Model {
 
     //reference object models
     public Model_Cash_Fund CashFund() throws SQLException, GuanzonException {
+        if (poCashFund == null) {
+            poCashFund = new CashflowModels(poGRider).CashFund();
+        }
         if (!"".equals((String) getValue("sCashFIDx"))) {
             if (poCashFund.getEditMode() == EditMode.READY
                     && poCashFund.getCashFundId().equals((String) getValue("sCashFIDx"))) {

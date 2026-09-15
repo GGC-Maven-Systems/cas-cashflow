@@ -53,9 +53,6 @@ public class Model_PettyCashLedger extends Model {
 //            ParamModels model = new ParamModels(poGRider);
 //            poBranch = model.Branch();
 //            poDepartment = model.Department();
-
-            CashflowModels gl = new CashflowModels(poGRider);
-            poPettyCash = gl.PettyCashMaster();
 //            end - initialize reference objects
 
             pnEditMode = EditMode.UNKNOWN;
@@ -174,6 +171,9 @@ public class Model_PettyCashLedger extends Model {
 
     //reference object models
     public Model_PettyCash PettyCash() throws SQLException, GuanzonException {
+        if (poPettyCash == null) {
+            poPettyCash = new CashflowModels(poGRider).PettyCashMaster();
+        }
         if (!"".equals((String) getValue("sPettyIDx"))) {
             if (poPettyCash.getEditMode() == EditMode.READY
                     && poPettyCash.getPettyId().equals((String) getValue("sPettyIDx"))) {

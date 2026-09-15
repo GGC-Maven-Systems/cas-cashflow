@@ -54,11 +54,7 @@ public class Model_Check_Release_Detail extends Model{
             //Step 7. get primary id from metadata, and initialized to variable as row id
             ID = poEntity.getMetaData().getColumnLabel(1);
             ID2 = poEntity.getMetaData().getColumnLabel(2);
-            
-            //add model here
-            CashflowModels cashFlow = new CashflowModels(poGRider);
-            poCheckPayment = cashFlow.CheckPayments();
-            
+
             pnEditMode = EditMode.UNKNOWN;
             
         }catch(SQLException e){
@@ -126,6 +122,9 @@ public class Model_Check_Release_Detail extends Model{
     }
     
     public Model_Check_Payments CheckPayment() throws SQLException, GuanzonException {
+        if (poCheckPayment == null) {
+            poCheckPayment = new CashflowModels(poGRider).CheckPayments();
+        }
         if (!"".equals(getValue("sSourceNo"))) {
             if (this.poCheckPayment.getEditMode() == 1 && this.poCheckPayment
                     .getTransactionNo().equals(getValue("sSourceNo"))) {

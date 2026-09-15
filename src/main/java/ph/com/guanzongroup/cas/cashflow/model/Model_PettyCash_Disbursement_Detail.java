@@ -10,7 +10,10 @@ import java.sql.SQLException;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.constant.EditMode;
+import org.guanzon.cas.parameter.model.Model_Account_Chart;
+import org.guanzon.cas.parameter.services.ParamModels;
 import org.json.simple.JSONObject;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.PettyCashDisbursementStatus;
@@ -23,8 +26,7 @@ public class Model_PettyCash_Disbursement_Detail extends Model {
 
     Model_Account_Chart poAccount;
     Model_Particular poParticular;
-    Model_Cash_Advance_Detail poCashAdvanceDetail;
-    
+
     @Override
     public void initialize() {
         try {
@@ -48,13 +50,6 @@ public class Model_PettyCash_Disbursement_Detail extends Model {
 
             ID = "sTransNox";
             ID2 = "nEntryNox";
-
-            //initialize reference objects
-            CashflowModels gl = new CashflowModels(poGRider);
-            poAccount = gl.Account_Chart();
-            poParticular = gl.Particular();
-            poCashAdvanceDetail = gl.CashAdvanceDetail();
-//            end - initialize reference objects
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -137,6 +132,9 @@ public class Model_PettyCash_Disbursement_Detail extends Model {
 
     //reference object models
     public Model_Particular Particular() throws SQLException, GuanzonException {
+        if (poParticular == null) {
+            poParticular = new CashflowModels(poGRider).Particular();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poParticular.getEditMode() == EditMode.READY
                     && poParticular.getParticularID().equals((String) getValue("sPrtclrID"))) {
@@ -158,14 +156,21 @@ public class Model_PettyCash_Disbursement_Detail extends Model {
     }
     
     public Model_Account_Chart AccountChart() throws SQLException, GuanzonException {
+        if (poAccount == null) {
+            poAccount = new ParamModels(poGRider).AccountChart();
+        }
         if (!"".equals((String) getValue("sAcctCode"))) {
             if (poAccount.getEditMode() == EditMode.READY
                     && poAccount.getAccountCode().equals((String) getValue("sAcctCode"))) {
                 return poAccount;
             } else {
+                if (ReferenceCache.tryLoad("Account_Chart", (String) getValue("sAcctCode"), poAccount)) {
+                    return poAccount;
+                }
                 poJSON = poAccount.openRecord((String) getValue("sAcctCode"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Account_Chart", (String) getValue("sAcctCode"), poAccount);
                     return poAccount;
                 } else {
                     poAccount.initialize();

@@ -10,16 +10,11 @@ import org.guanzon.appdriver.base.SQLUtil;
 import org.guanzon.appdriver.constant.EditMode;
 import org.guanzon.appdriver.constant.Logical;
 import org.guanzon.appdriver.constant.RecordStatus;
-import org.guanzon.cas.parameter.model.Model_Industry;
-import org.guanzon.cas.parameter.services.ParamModels;
 import org.json.simple.JSONObject;
 import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 
 public class Model_Recurring_Expense_Payment_Monitor extends Model {
 
-    Model_Industry poIndustry;
-    Model_Particular poParticular;
-    Model_Payee poPayee;
     Model_Recurring_Expense_Schedule poRecurringExpense;
 
     @Override
@@ -41,9 +36,6 @@ public class Model_Recurring_Expense_Payment_Monitor extends Model {
             //end - assign default values
 
             ID = poEntity.getMetaData().getColumnLabel(1);
-            
-            CashflowModels gl = new CashflowModels(poGRider);
-            poRecurringExpense = gl.Recurring_Expense_Schedule();
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -110,6 +102,9 @@ public class Model_Recurring_Expense_Payment_Monitor extends Model {
     }
     
     public Model_Recurring_Expense_Schedule RecurringExpenseSchedule() throws GuanzonException, SQLException {
+        if (poRecurringExpense == null) {
+            poRecurringExpense = new CashflowModels(poGRider).Recurring_Expense_Schedule();
+        }
         if (!"".equals((String) getValue("sRecurrNo"))) {
             if (poRecurringExpense.getEditMode() == EditMode.READY
                     && poRecurringExpense.getRecurringNo().equals((String) getValue("sRecurrNo"))) {

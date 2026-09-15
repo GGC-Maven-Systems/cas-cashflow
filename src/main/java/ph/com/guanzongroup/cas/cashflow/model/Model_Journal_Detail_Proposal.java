@@ -5,10 +5,12 @@ import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.SQLUtil;
 import org.guanzon.appdriver.constant.EditMode;
+import org.guanzon.cas.parameter.model.Model_Account_Chart;
+import org.guanzon.cas.parameter.services.ParamModels;
 import org.json.simple.JSONObject;
-import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 
 public class Model_Journal_Detail_Proposal extends Model {
     Model_Account_Chart poAccountChart;
@@ -39,9 +41,6 @@ public class Model_Journal_Detail_Proposal extends Model {
             ID = "sTransNox";
             ID2 = "nEntryNox";
             ID3 = "sAcctCode";
-            
-            CashflowModels model = new CashflowModels(poGRider);
-            poAccountChart = model.Account_Chart();
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -112,15 +111,23 @@ public class Model_Journal_Detail_Proposal extends Model {
     }
     
     public Model_Account_Chart Account_Chart() throws SQLException, GuanzonException{
+        if (poAccountChart == null) {
+            poAccountChart = new ParamModels(poGRider).AccountChart();
+        }
         if (!"".equals((String) getValue("sAcctCode"))){
-            if (poAccountChart.getEditMode() == EditMode.READY && 
+            if (poAccountChart.getEditMode() == EditMode.READY &&
                 poAccountChart.getAccountCode().equals((String) getValue("sAcctCode")))
                 return poAccountChart;
             else{
+                if (ReferenceCache.tryLoad("Account_Chart", (String) getValue("sAcctCode"), poAccountChart)) {
+                    return poAccountChart;
+                }
                 poJSON = poAccountChart.openRecord((String) getValue("sAcctCode"));
 
-                if ("success".equals((String) poJSON.get("result")))
+                if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Account_Chart", (String) getValue("sAcctCode"), poAccountChart);
                     return poAccountChart;
+                }
                 else {
                     poAccountChart.initialize();
                     return poAccountChart;

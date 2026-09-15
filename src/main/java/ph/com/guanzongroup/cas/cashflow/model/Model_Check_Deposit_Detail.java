@@ -44,8 +44,6 @@ public class Model_Check_Deposit_Detail extends Model {
             ID = poEntity.getMetaData().getColumnLabel(1);
             ID2 = poEntity.getMetaData().getColumnLabel(2);
 
-            poCheckPayment = new CashflowModels(poGRider).CheckPayments();
-            poDisbursement = new CashflowModels(poGRider).DisbursementMaster();
 //            poCheckReceive =  new CashflowModels(poGRider).CheckReceive();
 
             pnEditMode = EditMode.UNKNOWN;
@@ -126,6 +124,9 @@ public class Model_Check_Deposit_Detail extends Model {
     }
 
     public Model_Check_Payments CheckPayment() throws SQLException, GuanzonException {
+        if (poCheckPayment == null) {
+            poCheckPayment = new CashflowModels(poGRider).CheckPayments();
+        }
         if (!"".equals(getValue("sSourceNo"))) {
             if (this.poCheckPayment.getEditMode() == 1 && this.poCheckPayment
                     .getTransactionNo().equals(getValue("sSourceNo"))) {
@@ -144,6 +145,9 @@ public class Model_Check_Deposit_Detail extends Model {
     
     
     public Model_Disbursement_Master Disbursement() throws SQLException, GuanzonException {
+        if (poDisbursement == null) {
+            poDisbursement = new CashflowModels(poGRider).DisbursementMaster();
+        }
         if (!"".equals(CheckPayment().getSourceNo())) {
             if (this.poDisbursement.getEditMode() == 1 && this.poDisbursement.getTransactionNo().equals(CheckPayment().getSourceNo())) {
                 return this.poDisbursement;

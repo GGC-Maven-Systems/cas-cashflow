@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
@@ -50,15 +51,6 @@ public class Model_Journal_Master_Proposal extends Model {
             poEntity.absolute(1);
 
             ID = poEntity.getMetaData().getColumnLabel(1);
-            
-            ParamModels model = new ParamModels(poGRider);
-            poIndustry = model.Industry();
-            poCompany = model.Company();
-            poBranch = model.Branch();
-            poDepartment = model.Department();   
-            
-            CashflowModels cashmodel = new CashflowModels(poGRider);
-            poDisbursement = cashmodel.DisbursementMaster();
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -214,16 +206,24 @@ public class Model_Journal_Master_Proposal extends Model {
     }
     
     public Model_Industry Industry() throws SQLException, GuanzonException{
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals((String) getValue("sIndstCdx"))){
-            if (poIndustry.getEditMode() == EditMode.READY && 
+            if (poIndustry.getEditMode() == EditMode.READY &&
                 poIndustry.getIndustryId().equals((String) getValue("sIndstCdx")))
                 return poIndustry;
             else{
+                if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                    return poIndustry;
+                }
+
                 poJSON = poIndustry.openRecord((String) getValue("sIndstCdx"));
 
-                if ("success".equals((String) poJSON.get("result")))
+                if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                     return poIndustry;
-                else {
+                } else {
                     poIndustry.initialize();
                     return poIndustry;
                 }
@@ -233,18 +233,26 @@ public class Model_Journal_Master_Proposal extends Model {
             return poIndustry;
         }
     }
-    
+
     public Model_Company Company() throws SQLException, GuanzonException{
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (!"".equals((String) getValue("sCompnyCd"))){
-            if (poCompany.getEditMode() == EditMode.READY && 
+            if (poCompany.getEditMode() == EditMode.READY &&
                 poCompany.getCompanyId().equals((String) getValue("sCompnyCd")))
                 return poCompany;
             else{
+                if (ReferenceCache.tryLoad("Company", (String) getValue("sCompnyCd"), poCompany)) {
+                    return poCompany;
+                }
+
                 poJSON = poCompany.openRecord((String) getValue("sCompnyCd"));
 
-                if ("success".equals((String) poJSON.get("result")))
+                if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Company", (String) getValue("sCompnyCd"), poCompany);
                     return poCompany;
-                else {
+                } else {
                     poCompany.initialize();
                     return poCompany;
                 }
@@ -254,18 +262,26 @@ public class Model_Journal_Master_Proposal extends Model {
             return poCompany;
         }
     }
-    
+
     public Model_Branch Branch() throws SQLException, GuanzonException{
+        if (poBranch == null) {
+            poBranch = new ParamModels(poGRider).Branch();
+        }
         if (!"".equals((String) getValue("sBranchCd"))){
-            if (poBranch.getEditMode() == EditMode.READY && 
+            if (poBranch.getEditMode() == EditMode.READY &&
                 poBranch.getBranchCode().equals((String) getValue("sBranchCd")))
                 return poBranch;
             else{
+                if (ReferenceCache.tryLoad("Branch", (String) getValue("sBranchCd"), poBranch)) {
+                    return poBranch;
+                }
+
                 poJSON = poBranch.openRecord((String) getValue("sBranchCd"));
 
-                if ("success".equals((String) poJSON.get("result")))
+                if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Branch", (String) getValue("sBranchCd"), poBranch);
                     return poBranch;
-                else {
+                } else {
                     poBranch.initialize();
                     return poBranch;
                 }
@@ -275,18 +291,26 @@ public class Model_Journal_Master_Proposal extends Model {
             return poBranch;
         }
     }
-    
+
     public Model_Department Department() throws SQLException, GuanzonException{
+        if (poDepartment == null) {
+            poDepartment = new ParamModels(poGRider).Department();
+        }
         if (!"".equals((String) getValue("sDeptIDxx"))){
-            if (poDepartment.getEditMode() == EditMode.READY && 
+            if (poDepartment.getEditMode() == EditMode.READY &&
                 poDepartment.getDepartmentId().equals((String) getValue("sDeptIDxx")))
                 return poDepartment;
             else{
+                if (ReferenceCache.tryLoad("Department", (String) getValue("sDeptIDxx"), poDepartment)) {
+                    return poDepartment;
+                }
+
                 poJSON = poDepartment.openRecord((String) getValue("sDeptIDxx"));
 
-                if ("success".equals((String) poJSON.get("result")))
+                if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Department", (String) getValue("sDeptIDxx"), poDepartment);
                     return poDepartment;
-                else {
+                } else {
                     poDepartment.initialize();
                     return poDepartment;
                 }
@@ -296,10 +320,13 @@ public class Model_Journal_Master_Proposal extends Model {
             return poDepartment;
         }
     }
-    
+
     public Model_Disbursement_Master Disbursement() throws SQLException, GuanzonException{
+        if (poDisbursement == null) {
+            poDisbursement = new CashflowModels(poGRider).DisbursementMaster();
+        }
         if (!"".equals((String) getValue("sSourceNo"))){
-            if (poDisbursement.getEditMode() == EditMode.READY && 
+            if (poDisbursement.getEditMode() == EditMode.READY &&
                 poDisbursement.getTransactionNo().equals((String) getValue("sSourceNo")) 
 //                    && DisbursementStatic.SourceCode.DISBURSEMENT_VOUCHER.equals((String) getValue("sSourceCD"))
                     )

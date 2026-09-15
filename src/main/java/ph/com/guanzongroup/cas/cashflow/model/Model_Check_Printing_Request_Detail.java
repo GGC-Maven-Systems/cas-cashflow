@@ -48,11 +48,7 @@ public class Model_Check_Printing_Request_Detail extends Model {
             ID = "sTransNox";
             ID2 = "nEntryNox";
             ID3 = "sSourceNo";
-            
-            CashflowModels cashFlow = new CashflowModels(poGRider);
-            poDVMaster = cashFlow.DisbursementMaster();
-            poDVDetail = cashFlow.DisbursementDetail();
-            poCheckPayments = cashFlow.CheckPayments();
+
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
             logwrapr.severe(e.getMessage());
@@ -135,6 +131,9 @@ public class Model_Check_Printing_Request_Detail extends Model {
     }
 
     public Model_Disbursement_Master DisbursementMaster() throws SQLException, GuanzonException {
+        if (poDVMaster == null) {
+            poDVMaster = new CashflowModels(poGRider).DisbursementMaster();
+        }
         poJSON = poCheckPayments.openRecord((String) getValue("sSourceNo"));
         String Transaction = poCheckPayments.getSourceNo();
         
@@ -161,6 +160,9 @@ public class Model_Check_Printing_Request_Detail extends Model {
     }
     
     public Model_Disbursement_Detail DisbursementDetail() throws SQLException, GuanzonException {
+        if (poDVDetail == null) {
+            poDVDetail = new CashflowModels(poGRider).DisbursementDetail();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if (poDVDetail.getEditMode() == EditMode.READY
                     && poDVDetail.getTransactionNo().equals((String) getValue("sSourceNo"))) {
@@ -182,6 +184,9 @@ public class Model_Check_Printing_Request_Detail extends Model {
     }
     
     public Model_Check_Payments CheckPayments() throws SQLException, GuanzonException {
+        if (poCheckPayments == null) {
+            poCheckPayments = new CashflowModels(poGRider).CheckPayments();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if (poCheckPayments.getEditMode() == EditMode.READY
                     && poCheckPayments.getTransactionNo().equals((String) getValue("sSourceNo"))) {

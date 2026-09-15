@@ -21,7 +21,6 @@ import ph.com.guanzongroup.cas.cashflow.status.CashDisbursementStatus;
  */
 public class Model_Cash_Disbursement_Detail extends Model {
 
-    Model_Account_Chart poAccount;
     Model_Particular poParticular;
     Model_Cash_Advance_Detail poCashAdvanceDetail;
     
@@ -55,12 +54,9 @@ public class Model_Cash_Disbursement_Detail extends Model {
             ID = "sTransNox";
             ID2 = "nEntryNox";
 
-            //initialize reference objects
-            CashflowModels gl = new CashflowModels(poGRider);
-            poAccount = gl.Account_Chart();
-            poParticular = gl.Particular();
-            poCashAdvanceDetail = gl.CashAdvanceDetail();
-//            end - initialize reference objects
+            //poParticular, poCashAdvanceDetail are intentionally NOT constructed here - see
+            //their accessor methods below, which build them lazily on first access so
+            //opening this record never touches those tables.
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -207,6 +203,9 @@ public class Model_Cash_Disbursement_Detail extends Model {
     //reference object models
 
     public Model_Particular Particular() throws SQLException, GuanzonException {
+        if (poParticular == null) {
+            poParticular = new CashflowModels(poGRider).Particular();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poParticular.getEditMode() == EditMode.READY
                     && poParticular.getParticularID().equals((String) getValue("sPrtclrID"))) {
@@ -228,6 +227,9 @@ public class Model_Cash_Disbursement_Detail extends Model {
     }
     
     public Model_Cash_Advance_Detail CashAdvanceDetail(String fsSourceNo) throws SQLException, GuanzonException{
+        if (poCashAdvanceDetail == null) {
+            poCashAdvanceDetail = new CashflowModels(poGRider).CashAdvanceDetail();
+        }
         if(fsSourceNo != null && !"".equals(fsSourceNo) && (int) getValue("nEntryNox") > 0){
             if (poCashAdvanceDetail.getEditMode() == EditMode.READY
                     && poCashAdvanceDetail.getTransactionNo().equals(fsSourceNo)

@@ -10,9 +10,11 @@ import java.sql.SQLException;
 import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.constant.EditMode;
+import org.guanzon.cas.parameter.model.Model_Account_Chart;
+import org.guanzon.cas.parameter.services.ParamModels;
 import org.json.simple.JSONObject;
-import ph.com.guanzongroup.cas.cashflow.services.CashflowModels;
 import ph.com.guanzongroup.cas.cashflow.status.CashAdvanceStatus;
 
 /**
@@ -22,8 +24,7 @@ import ph.com.guanzongroup.cas.cashflow.status.CashAdvanceStatus;
 public class Model_Cash_Advance_Detail extends Model {
 
     Model_Account_Chart poAccount;
-    Model_Particular poParticular;
-    
+
     @Override
     public void initialize() {
         try {
@@ -48,12 +49,6 @@ public class Model_Cash_Advance_Detail extends Model {
 
             ID = "sTransNox";
             ID2 = "nEntryNox";
-
-            //initialize reference objects
-            CashflowModels gl = new CashflowModels(poGRider);
-            poAccount = gl.Account_Chart();
-            poParticular = gl.Particular();
-//            end - initialize reference objects
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -152,14 +147,21 @@ public class Model_Cash_Advance_Detail extends Model {
 
     //reference object models
     public Model_Account_Chart Account() throws SQLException, GuanzonException {
+        if (poAccount == null) {
+            poAccount = new ParamModels(poGRider).AccountChart();
+        }
         if (!"".equals((String) getValue("sAcctCode"))) {
             if (poAccount.getEditMode() == EditMode.READY
                     && poAccount.getAccountCode().equals((String) getValue("sAcctCode"))) {
                 return poAccount;
             } else {
+                if (ReferenceCache.tryLoad("Account_Chart", (String) getValue("sAcctCode"), poAccount)) {
+                    return poAccount;
+                }
                 poJSON = poAccount.openRecord((String) getValue("sAcctCode"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Account_Chart", (String) getValue("sAcctCode"), poAccount);
                     return poAccount;
                 } else {
                     poAccount.initialize();

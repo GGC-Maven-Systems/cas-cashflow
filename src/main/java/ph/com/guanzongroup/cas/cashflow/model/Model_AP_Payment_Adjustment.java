@@ -11,9 +11,8 @@ import org.guanzon.appdriver.agent.services.Model;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.constant.EditMode;
-import org.guanzon.cas.client.model.Model_Client_Address;
-import org.guanzon.cas.client.model.Model_Client_Institution_Contact;
 import org.guanzon.cas.client.model.Model_Client_Master;
 import org.guanzon.cas.client.services.ClientModels;
 import ph.com.guanzongroup.cas.cashflow.status.APPaymentAdjustmentStatus;
@@ -36,8 +35,6 @@ public class Model_AP_Payment_Adjustment extends Model {
     Model_Company poCompany;
     Model_Client_Master poSupplier;
     Model_Payee poPayee;
-    Model_Client_Address poSupplierAdress;
-    Model_Client_Institution_Contact poSupplierContactPerson;
 
     @Override
     public void initialize() {
@@ -72,21 +69,9 @@ public class Model_AP_Payment_Adjustment extends Model {
 
             ID = "sTransNox";
 
-            //initialize reference objects
-            ParamModels model = new ParamModels(poGRider);
-            poBranch = model.Branch();
-            poIndustry = model.Industry();
-            poCompany = model.Company();
-
-            ClientModels clientModel = new ClientModels(poGRider);
-
-            poSupplier = clientModel.ClientMaster();
-            poSupplierAdress = clientModel.ClientAddress();
-            poSupplierContactPerson = clientModel.ClientInstitutionContact();
-
-            CashflowModels gl = new CashflowModels(poGRider);
-            poPayee = gl.Payee();
-//            end - initialize reference objects
+            //poBranch, poIndustry, poCompany, poSupplier, poPayee are intentionally NOT
+            //constructed here - see their accessor methods below, which build them lazily
+            //on first access so opening this record never touches those tables.
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -352,14 +337,22 @@ public class Model_AP_Payment_Adjustment extends Model {
 
     //reference object models
     public Model_Branch Branch() throws SQLException, GuanzonException {
+        if (poBranch == null) {
+            poBranch = new ParamModels(poGRider).Branch();
+        }
         if (!"".equals((String) getValue("sBranchCd"))) {
             if (poBranch.getEditMode() == EditMode.READY
                     && poBranch.getBranchCode().equals((String) getValue("sBranchCd"))) {
                 return poBranch;
             } else {
+                if (ReferenceCache.tryLoad("Branch", (String) getValue("sBranchCd"), poBranch)) {
+                    return poBranch;
+                }
+
                 poJSON = poBranch.openRecord((String) getValue("sBranchCd"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Branch", (String) getValue("sBranchCd"), poBranch);
                     return poBranch;
                 } else {
                     poBranch.initialize();
@@ -373,14 +366,22 @@ public class Model_AP_Payment_Adjustment extends Model {
     }
 
     public Model_Industry Industry() throws SQLException, GuanzonException {
+        if (poIndustry == null) {
+            poIndustry = new ParamModels(poGRider).Industry();
+        }
         if (!"".equals((String) getValue("sIndstCdx"))) {
             if (poIndustry.getEditMode() == EditMode.READY
                     && poIndustry.getIndustryId().equals((String) getValue("sIndstCdx"))) {
                 return poIndustry;
             } else {
+                if (ReferenceCache.tryLoad("Industry", (String) getValue("sIndstCdx"), poIndustry)) {
+                    return poIndustry;
+                }
+
                 poJSON = poIndustry.openRecord((String) getValue("sIndstCdx"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Industry", (String) getValue("sIndstCdx"), poIndustry);
                     return poIndustry;
                 } else {
                     poIndustry.initialize();
@@ -394,14 +395,22 @@ public class Model_AP_Payment_Adjustment extends Model {
     }
 
     public Model_Company Company() throws SQLException, GuanzonException {
+        if (poCompany == null) {
+            poCompany = new ParamModels(poGRider).Company();
+        }
         if (!"".equals((String) getValue("sCompnyID"))) {
             if (poCompany.getEditMode() == EditMode.READY
                     && poCompany.getCompanyId().equals((String) getValue("sCompnyID"))) {
                 return poCompany;
             } else {
+                if (ReferenceCache.tryLoad("Company", (String) getValue("sCompnyID"), poCompany)) {
+                    return poCompany;
+                }
+
                 poJSON = poCompany.openRecord((String) getValue("sCompnyID"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Company", (String) getValue("sCompnyID"), poCompany);
                     return poCompany;
                 } else {
                     poCompany.initialize();
@@ -415,14 +424,22 @@ public class Model_AP_Payment_Adjustment extends Model {
     }
 
     public Model_Client_Master Supplier() throws SQLException, GuanzonException {
+        if (poSupplier == null) {
+            poSupplier = new ClientModels(poGRider).ClientMaster();
+        }
         if (!"".equals((String) getValue("sClientID"))) {
             if (poSupplier.getEditMode() == EditMode.READY
                     && poSupplier.getClientId().equals((String) getValue("sClientID"))) {
                 return poSupplier;
             } else {
+                if (ReferenceCache.tryLoad("Client_Master", (String) getValue("sClientID"), poSupplier)) {
+                    return poSupplier;
+                }
+
                 poJSON = poSupplier.openRecord((String) getValue("sClientID"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Client_Master", (String) getValue("sClientID"), poSupplier);
                     return poSupplier;
                 } else {
                     poSupplier.initialize();
@@ -436,6 +453,9 @@ public class Model_AP_Payment_Adjustment extends Model {
     }
 
     public Model_Payee Payee() throws SQLException, GuanzonException {
+        if (poPayee == null) {
+            poPayee = new CashflowModels(poGRider).Payee();
+        }
         if (!"".equals((String) getValue("sIssuedTo"))) {
             if (poPayee.getEditMode() == EditMode.READY
                     && poPayee.getPayeeID().equals((String) getValue("sIssuedTo"))) {

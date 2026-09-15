@@ -4,6 +4,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 import org.guanzon.appdriver.agent.services.Model;
+import org.guanzon.appdriver.agent.services.ReferenceCache;
 import org.guanzon.appdriver.base.GuanzonException;
 import org.guanzon.appdriver.base.MiscUtil;
 import org.guanzon.appdriver.base.SQLUtil;
@@ -43,15 +44,6 @@ public class Model_Payee extends Model {
             //end - assign default values
 
             ID = poEntity.getMetaData().getColumnLabel(1);
-
-            ClientModels model = new ClientModels(poGRider);
-            poClient = model.ClientMaster();
-            poClientAddress = model.ClientAddress();
-            poAPClient = model.ClientMaster();
-            poAPClientMaster = model.APClientMaster();
-
-            CashflowModels gl = new CashflowModels(poGRider);
-            poParticular = gl.Particular();
 
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
@@ -130,6 +122,9 @@ public class Model_Payee extends Model {
     }
 
     public Model_Particular Particular() throws SQLException, GuanzonException {
+        if (poParticular == null) {
+            poParticular = new CashflowModels(poGRider).Particular();
+        }
         if (!"".equals((String) getValue("sPrtclrID"))) {
             if (poParticular.getEditMode() == EditMode.READY
                     && poParticular.getParticularID().equals((String) getValue("sPrtclrID"))) {
@@ -151,14 +146,22 @@ public class Model_Payee extends Model {
     }
 
     public Model_Client_Master APClient() throws SQLException, GuanzonException {
+        if (poAPClient == null) {
+            poAPClient = new ClientModels(poGRider).ClientMaster();
+        }
         if (!"".equals((String) getValue("sAPClntID"))) {
             if (poAPClient.getEditMode() == EditMode.READY
                     && poAPClient.getClientId().equals((String) getValue("sAPClntID"))) {
                 return poAPClient;
             } else {
+                if (ReferenceCache.tryLoad("Client_Master", (String) getValue("sAPClntID"), poAPClient)) {
+                    return poAPClient;
+                }
+
                 poJSON = poAPClient.openRecord((String) getValue("sAPClntID"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Client_Master", (String) getValue("sAPClntID"), poAPClient);
                     return poAPClient;
                 } else {
                     poAPClient.initialize();
@@ -172,14 +175,22 @@ public class Model_Payee extends Model {
     }
 
     public Model_AP_Client_Master APClientMaster() throws SQLException, GuanzonException {
+        if (poAPClientMaster == null) {
+            poAPClientMaster = new ClientModels(poGRider).APClientMaster();
+        }
         if (!"".equals((String) getValue("sAPClntID"))) {
             if (poAPClientMaster.getEditMode() == EditMode.READY
                     && poAPClientMaster.getClientId().equals((String) getValue("sAPClntID"))) {
                 return poAPClientMaster;
             } else {
+                if (ReferenceCache.tryLoad("AP_Client_Master", (String) getValue("sAPClntID"), poAPClientMaster)) {
+                    return poAPClientMaster;
+                }
+
                 poJSON = poAPClientMaster.openRecord((String) getValue("sAPClntID"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("AP_Client_Master", (String) getValue("sAPClntID"), poAPClientMaster);
                     return poAPClientMaster;
                 } else {
                     poAPClientMaster.initialize();
@@ -193,14 +204,22 @@ public class Model_Payee extends Model {
     }
 
     public Model_Client_Master Client() throws SQLException, GuanzonException {
+        if (poClient == null) {
+            poClient = new ClientModels(poGRider).ClientMaster();
+        }
         if (!"".equals((String) getValue("sClientID"))) {
             if (poClient.getEditMode() == EditMode.READY
                     && poClient.getClientId().equals((String) getValue("sClientID"))) {
                 return poClient;
             } else {
+                if (ReferenceCache.tryLoad("Client_Master", (String) getValue("sClientID"), poClient)) {
+                    return poClient;
+                }
+
                 poJSON = poClient.openRecord((String) getValue("sClientID"));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Client_Master", (String) getValue("sClientID"), poClient);
                     return poClient;
                 } else {
                     poClient.initialize();
@@ -214,14 +233,22 @@ public class Model_Payee extends Model {
     }
 
     public Model_Client_Address ClientAddress() throws SQLException, GuanzonException {
+        if (poClientAddress == null) {
+            poClientAddress = new ClientModels(poGRider).ClientAddress();
+        }
         if (!"".equals((String) getValue("sClientID"))) {
             if (poClientAddress.getEditMode() == EditMode.READY
                     && poClientAddress.getClientId().equals((String) getValue("sClientID"))) {
                 return poClientAddress;
             } else {
+                if (ReferenceCache.tryLoad("Client_Address", (String) getValue("sClientID"), poClientAddress)) {
+                    return poClientAddress;
+                }
+
                 poJSON = poClientAddress.openRecord(OpenClientAddress((String) getValue("sClientID")));
 
                 if ("success".equals((String) poJSON.get("result"))) {
+                    ReferenceCache.store("Client_Address", (String) getValue("sClientID"), poClientAddress);
                     return poClientAddress;
                 } else {
                     poClientAddress.initialize();

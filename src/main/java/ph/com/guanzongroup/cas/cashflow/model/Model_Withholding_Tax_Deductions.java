@@ -51,12 +51,6 @@ public class Model_Withholding_Tax_Deductions extends Model {
 
             ID = "sTransNox";
 
-            //initialize reference objects
-            CashflowModels gl = new CashflowModels(poGRider);
-            poDisbursement_Master = gl.DisbursementMaster();
-            poWithholdingTax = gl.Withholding_Tax();
-//            end - initialize reference objects
-
             pnEditMode = EditMode.UNKNOWN;
         } catch (SQLException e) {
             logwrapr.severe(e.getMessage());
@@ -206,6 +200,9 @@ public class Model_Withholding_Tax_Deductions extends Model {
 
     //reference object models
     public Model_Withholding_Tax WithholdingTax() throws SQLException, GuanzonException {
+        if (poWithholdingTax == null) {
+            poWithholdingTax = new CashflowModels(poGRider).Withholding_Tax();
+        }
         if (!"".equals((String) getValue("sTaxRteID"))) {
             if (poWithholdingTax.getEditMode() == EditMode.READY
                     && poWithholdingTax.getTaxRateId().equals((String) getValue("sTaxRteID"))) {
@@ -228,6 +225,9 @@ public class Model_Withholding_Tax_Deductions extends Model {
     }
     
     public Model_Disbursement_Master Disbursement() throws SQLException, GuanzonException {
+        if (poDisbursement_Master == null) {
+            poDisbursement_Master = new CashflowModels(poGRider).DisbursementMaster();
+        }
         if (!"".equals((String) getValue("sSourceNo"))) {
             if (poDisbursement_Master.getEditMode() == EditMode.READY
                     && poDisbursement_Master.getTransactionNo().equals((String) getValue("sSourceNo"))) {
